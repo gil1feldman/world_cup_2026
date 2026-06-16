@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>מונדיאל 2026 — לוח מבצעים</title>
+<title>מונדיאל 2026 — הדשבורד</title>
 <style>
   :root{
     --ink:#0c1f17;
@@ -1023,7 +1023,10 @@
     }
     .minute-labels span{
       font-size:0.52rem;
-      white-space:nowrap;
+      white-space:normal;
+      overflow-wrap:break-word;
+      line-height:1.2;
+      text-align:center;
     }
     .minute-bar .count{ font-size:0.6rem; }
 
@@ -1427,7 +1430,11 @@ function renderMinuteAnalysis(matches){
       ${b.count > 0 ? `<span class="count">${b.count}</span>` : ''}
       <div class="${cls}" style="height:${heightPct}%"></div>
     </div>`;
-    labels += `<span style="direction:ltr;unicode-bidi:isolate">${b.label}</span>`;
+    // On mobile the label breaks after the dash: "1–" / "10"
+    const labelHtml = b.label.includes("–")
+      ? b.label.replace("–", "–<wbr>")
+      : b.label;
+    labels += `<span style="direction:ltr;unicode-bidi:isolate">${labelHtml}</span>`;
   });
 
   // takeaway: busiest bin + first vs second half split
