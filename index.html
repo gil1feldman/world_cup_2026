@@ -108,6 +108,7 @@
     -webkit-overflow-scrolling:touch;
     scrollbar-width:none;
     padding:0 12px;
+    align-items:center;
   }
   .topnav-inner::-webkit-scrollbar{ display:none; }
   .topnav a{
@@ -131,6 +132,29 @@
   }
   .topnav a:active{
     color:var(--gold);
+  }
+
+  /* ---------- EXPAND/COLLAPSE ALL BUTTON ---------- */
+  .toggle-all-btn{
+    flex:0 0 auto;
+    margin-right:auto;
+    font-family:var(--mono);
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--gold);
+    background:none;
+    border:1px solid rgba(217,164,65,0.4);
+    border-radius:3px;
+    padding:6px 12px;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .toggle-all-btn:hover{
+    color:var(--ink);
+    background:var(--gold);
+    border-color:var(--gold);
   }
 
   /* ---------- TEAM SEARCH ---------- */
@@ -202,10 +226,24 @@
   /* ---------- LAYOUT ---------- */
   main{ max-width:1180px; margin:0 auto; padding:24px 20px 60px; }
 
+  /* ---------- ACCORDION SECTION ---------- */
+  .accordion-section{
+    margin-top:32px;
+  }
+  .accordion-section:first-child{
+    margin-top:0;
+  }
+
   .section-title{
-    display:flex; align-items:baseline; gap:14px;
-    margin:42px 0 16px;
+    display:flex; align-items:center; gap:14px;
     scroll-margin-top:60px;
+    cursor:pointer;
+    user-select:none;
+    padding:10px 0;
+    margin:0;
+  }
+  .section-title:hover .section-toggle-icon{
+    color:var(--pitch);
   }
   .section-title h2{
     font-family:var(--display);
@@ -218,11 +256,38 @@
   .section-title .rule{
     flex:1; height:2px;
     background:repeating-linear-gradient(90deg, var(--ink) 0 8px, transparent 8px 14px);
+    min-width:20px;
   }
   .section-title .count{
     font-family:var(--mono);
     font-size:0.8rem;
     color:#6b6557;
+    white-space:nowrap;
+  }
+  .section-toggle-icon{
+    flex:0 0 auto;
+    font-family:var(--mono);
+    font-size:1rem;
+    color:#8a8270;
+    transition:transform 0.2s ease, color 0.15s ease;
+    line-height:1;
+    width:20px;
+    text-align:center;
+  }
+  .section-title[aria-expanded="false"] .section-toggle-icon{
+    transform: rotate(-90deg);
+  }
+
+  .section-body{
+    overflow:hidden;
+    transition:max-height 0.32s ease, opacity 0.25s ease;
+    max-height:20000px; /* large enough for any section */
+    opacity:1;
+  }
+  .section-body.collapsed{
+    max-height:0;
+    opacity:0;
+    pointer-events:none;
   }
 
   /* ---------- TOP STATS ---------- */
@@ -232,6 +297,7 @@
     gap:1px;
     background:var(--ink);
     border:2px solid var(--ink);
+    margin-bottom:0;
   }
   .stat-card{
     background:var(--chalk);
@@ -253,6 +319,94 @@
   }
   .stat-card.accent .num{ color:var(--pitch); }
   .stat-card.gold .num{ color:#a87a18; }
+
+  /* ---------- RECENT MATCHES ---------- */
+  .recent-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:1px;
+    background:var(--ink);
+    border:2px solid var(--ink);
+  }
+  .recent-card{
+    background:#fffdf7;
+    padding:16px 16px 14px;
+  }
+  .recent-when{
+    font-family:var(--mono);
+    font-size:0.7rem;
+    color:#8a8270;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    margin-bottom:8px;
+  }
+  .recent-score{
+    font-family:var(--display);
+    font-size:2rem;
+    font-weight:700;
+    color:var(--ink);
+    letter-spacing:0.05em;
+    margin-bottom:4px;
+    line-height:1;
+  }
+  .recent-score .sep{ color:#c8c0aa; padding:0 5px; }
+  .recent-score .winner{ color:var(--pitch); }
+  .recent-teams{
+    font-size:0.95rem;
+    font-weight:600;
+    margin-bottom:6px;
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .recent-teams .team-home{ text-align:right; }
+  .recent-teams .team-away{ text-align:left; }
+  .recent-meta{
+    font-family:var(--mono);
+    font-size:0.7rem;
+    color:#a89e88;
+    margin-bottom:10px;
+  }
+  .recent-goals{
+    border-top:1px dashed #d8d0bb;
+    padding-top:10px;
+    margin-top:2px;
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+  }
+  .recent-goal-row{
+    font-size:0.8rem;
+    color:#4a473d;
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+  }
+  .recent-goal-row .goal-minute{
+    font-family:var(--mono);
+    font-size:0.7rem;
+    font-weight:700;
+    color:var(--pitch);
+    flex:0 0 auto;
+    min-width:34px;
+    text-align:right;
+  }
+  .recent-goal-row .goal-name{
+    flex:1;
+  }
+  .recent-goal-row .goal-team{
+    font-family:var(--mono);
+    font-size:0.66rem;
+    color:#a89e88;
+    flex:0 0 auto;
+  }
+  .recent-no-goals{
+    font-family:var(--mono);
+    font-size:0.74rem;
+    color:#a89e88;
+    padding-top:10px;
+    border-top:1px dashed #d8d0bb;
+  }
 
   /* ---------- GROUP CARDS ---------- */
   .groups-grid{
@@ -319,9 +473,6 @@
     font-family:var(--mono);
     font-weight:700;
     color:var(--pitch);
-  }
-  table.standings tbody tr:first-child td.team::before{
-    content:"";
   }
   table.standings tbody tr.qualify td{
     background:rgba(217,164,65,0.14);
@@ -989,21 +1140,9 @@
   }
 
   @media (max-width:600px){
-    .section-title{
-      flex-wrap:wrap;
-      margin:32px 0 14px;
-    }
     .section-title h2{
       white-space:normal;
       font-size:1.25rem;
-      flex-basis:100%;
-    }
-    .section-title .rule{
-      order:2;
-    }
-    .section-title .count{
-      order:1;
-      margin-right:auto;
     }
 
     .minute-chart{ padding:16px 8px 12px; }
@@ -1146,16 +1285,18 @@
       <datalist id="teamList"></datalist>
       <button id="clearTeamSearch" class="clear-search" title="נקה סינון" aria-label="נקה סינון" hidden>×</button>
     </div>
-    <a href="#section-upcoming">המשחקים הבאים</a>
+    <button class="toggle-all-btn" id="toggleAllBtn">הרחב הכל</button>
+    <a href="#section-recent">משחקים אחרונים</a>
+    <a href="#section-upcoming">משחקים הבאים</a>
     <a href="#section-standings">מיקומי בתים</a>
     <a href="#section-scorers">מבקיעים</a>
     <a href="#section-minutes">שערים לפי דקה</a>
     <a href="#section-results">ניתוח תוצאות</a>
     <a href="#section-upsets">הפתעות</a>
-    <a href="#section-comebacks">משחקים עם מהפך</a>
+    <a href="#section-comebacks">מהפכים</a>
     <a href="#section-matches">לוח משחקים</a>
     <a href="#section-scatter">פיזור</a>
-    <a href="#section-pace">קצב שערים מול עבר</a>
+    <a href="#section-pace">קצב שערים</a>
     <a href="#section-confederations">לפי יבשת</a>
   </div>
 </nav>
@@ -1173,8 +1314,6 @@
 <script>
 const DATA_URL = "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json";
 
-// Previous editions, used for the "goal-scoring pace" comparison section.
-// Same JSON schema as 2026 (matches[] with team1/team2, score.ft, goals1/goals2).
 const HISTORICAL_DATA_URLS = {
   2022: "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2022/worldcup.json",
   2018: "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2018/worldcup.json",
@@ -1183,11 +1322,6 @@ const HISTORICAL_DATA_URLS = {
 
 const GROUP_ORDER = ["Group A","Group B","Group C","Group D","Group E","Group F","Group G","Group H","Group I","Group J","Group K","Group L"];
 
-// Static snapshot of the FIFA Men's World Ranking, last official update
-// 11 June 2026 (next update scheduled 20 July 2026, after the tournament).
-// Source: FIFA/Coca-Cola Men's World Ranking via USA TODAY/Yahoo Sports.
-// Since the ranking doesn't change during the tournament, a single
-// snapshot is sufficient for "expected vs actual" and upset analysis.
 const FIFA_RANKING = {
   "Argentina": 1, "Spain": 2, "France": 3, "England": 4, "Portugal": 5,
   "Brazil": 6, "Morocco": 7, "Netherlands": 8, "Belgium": 9, "Germany": 10,
@@ -1202,6 +1336,89 @@ const FIFA_RANKING = {
   "Haiti": 82, "Curaçao": 83, "New Zealand": 85
 };
 
+// ─── Accordion state ─────────────────────────────────────────────────────────
+// Sections that are open by default (all others start collapsed).
+const DEFAULT_OPEN = new Set(["section-recent", "section-upcoming"]);
+// Tracks which sections are currently open.
+const openSections = new Set(DEFAULT_OPEN);
+
+function isAllExpanded(){
+  const all = document.querySelectorAll('.accordion-section');
+  return [...all].every(s => openSections.has(s.dataset.sectionId));
+}
+
+function setSection(id, expanded){
+  const section = document.querySelector(`[data-section-id="${id}"]`);
+  if(!section) return;
+  const title = section.querySelector('.section-title');
+  const body  = section.querySelector('.section-body');
+  if(!title || !body) return;
+  if(expanded){
+    openSections.add(id);
+    body.classList.remove('collapsed');
+    title.setAttribute('aria-expanded', 'true');
+  } else {
+    openSections.delete(id);
+    body.classList.add('collapsed');
+    title.setAttribute('aria-expanded', 'false');
+  }
+  updateToggleAllBtn();
+}
+
+function toggleSection(id){
+  setSection(id, !openSections.has(id));
+}
+
+function updateToggleAllBtn(){
+  const btn = document.getElementById('toggleAllBtn');
+  if(!btn) return;
+  const allIds = [...document.querySelectorAll('.accordion-section')].map(s => s.dataset.sectionId);
+  const allOpen = allIds.every(id => openSections.has(id));
+  btn.textContent = allOpen ? 'צמצם הכל' : 'הרחב הכל';
+}
+
+function setupAccordion(){
+  document.querySelectorAll('.accordion-section').forEach(section => {
+    const id = section.dataset.sectionId;
+    const title = section.querySelector('.section-title');
+    if(!title) return;
+    title.addEventListener('click', () => toggleSection(id));
+    title.addEventListener('keydown', e => {
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleSection(id); }
+    });
+    title.setAttribute('role', 'button');
+    title.setAttribute('tabindex', '0');
+  });
+
+  const btn = document.getElementById('toggleAllBtn');
+  if(btn){
+    btn.addEventListener('click', () => {
+      const allIds = [...document.querySelectorAll('.accordion-section')].map(s => s.dataset.sectionId);
+      const allOpen = allIds.every(id => openSections.has(id));
+      allIds.forEach(id => setSection(id, !allOpen));
+    });
+  }
+  updateToggleAllBtn();
+}
+
+// Wraps a content block in an accordion section div.
+// `id` is the section anchor id (e.g. "section-upcoming").
+// `titleHtml` is the full .section-title inner HTML (h2 + rule + count).
+// `bodyHtml` is the section content.
+function accordion(id, titleHtml, bodyHtml){
+  const isOpen = openSections.has(id);
+  return `<div class="accordion-section" data-section-id="${id}">
+    <div class="section-title" aria-expanded="${isOpen}" id="${id}">
+      <span class="section-toggle-icon">▼</span>
+      ${titleHtml}
+    </div>
+    <div class="section-body${isOpen ? '' : ' collapsed'}">
+      ${bodyHtml}
+    </div>
+  </div>`;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtDate(d){
   const date = new Date(d + "T00:00:00");
@@ -1210,25 +1427,18 @@ function fmtDate(d){
   return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
 }
 
-// Israel is UTC+3 during DST (IDT), which covers the entire World Cup window
-// (March–October), so we can use a fixed +3h offset for the whole tournament.
 const ISRAEL_OFFSET_HOURS = 3;
 
-// Parses the openfootball "date" + "time" fields (e.g. "2026-06-11", "13:00 UTC-6")
-// into a real UTC Date object.
 function matchUtcDate(m){
   if(!m.time) return null;
   const timeMatch = m.time.match(/^(\d{1,2}):(\d{2})\s*UTC([+-]\d+)$/);
   if(!timeMatch) return null;
   const [, hh, mm, offset] = timeMatch;
   const [y, mo, d] = m.date.split("-").map(Number);
-  // Construct as if the local time were UTC, then subtract the venue's offset
-  // to get true UTC (local = UTC + offset  =>  UTC = local - offset).
   const asUtcMillis = Date.UTC(y, mo - 1, d, Number(hh), Number(mm));
   return new Date(asUtcMillis - Number(offset) * 3600 * 1000);
 }
 
-// Returns {dateStr, timeStr} representing the match's kickoff in Israel time.
 function matchIsraelTime(m){
   const utc = matchUtcDate(m);
   if(!utc) return null;
@@ -1238,17 +1448,12 @@ function matchIsraelTime(m){
   const d = String(israel.getUTCDate()).padStart(2, "0");
   const hh = String(israel.getUTCHours()).padStart(2, "0");
   const mm = String(israel.getUTCMinutes()).padStart(2, "0");
-  return {
-    dateStr: `${y}-${mo}-${d}`,
-    timeStr: `${hh}:${mm}`,
-    utc,
-  };
+  return { dateStr: `${y}-${mo}-${d}`, timeStr: `${hh}:${mm}`, utc };
 }
 
 function buildStandings(matches){
   const table = {};
   GROUP_ORDER.forEach(g => table[g] = {});
-
   matches.forEach(m => {
     if(!m.group) return;
     const g = table[m.group];
@@ -1256,18 +1461,15 @@ function buildStandings(matches){
       if(!g[t]) g[t] = {team:t, played:0, win:0, draw:0, loss:0, gf:0, ga:0, pts:0};
     });
     if(!m.score) return;
-
     const [hs, as] = m.score.ft;
     const home = g[m.team1], away = g[m.team2];
     home.played++; away.played++;
     home.gf += hs; home.ga += as;
     away.gf += as; away.ga += hs;
-
     if(hs > as){ home.win++; home.pts += 3; away.loss++; }
     else if(hs < as){ away.win++; away.pts += 3; home.loss++; }
     else { home.draw++; away.draw++; home.pts += 1; away.pts += 1; }
   });
-
   const result = {};
   GROUP_ORDER.forEach(g => {
     const teams = Object.values(table[g]);
@@ -1298,7 +1500,6 @@ function renderStatusRow(matches){
   const today = new Date();
   const todayStr = today.toISOString().slice(0,10);
   const liveToday = matches.filter(m => m.date === todayStr);
-
   let html = `
     <span class="status-pill">שוחקו <b>${played}</b> / ${total} משחקים</span>
     <span class="status-pill">סה״כ <b>${goals}</b> שערים</span>
@@ -1310,24 +1511,109 @@ function renderStatusRow(matches){
   document.getElementById('statusRow').innerHTML = html;
 }
 
+// ─── Recent Matches ────────────────────────────────────────────────────────────
+
+function sortPlayedChronologically(matches){
+  const played = matches.filter(m => m.score);
+  return played
+    .map((m, i) => ({m, i, utc: matchUtcDate(m)}))
+    .sort((a, b) => {
+      if(a.utc && b.utc) return a.utc - b.utc || a.i - b.i;
+      if(a.utc) return -1;
+      if(b.utc) return 1;
+      return (a.m.date < b.m.date ? -1 : a.m.date > b.m.date ? 1 : 0) || a.i - b.i;
+    })
+    .map(x => x.m);
+}
+
+function renderRecentMatches(matches){
+  const played = sortPlayedChronologically(matches);
+  const titleInner = `<h2>4 משחקים אחרונים</h2><div class="rule"></div><span class="count">${played.length} משחקים שהתקיימו</span>`;
+
+  if(played.length === 0){
+    return accordion("section-recent", titleInner,
+      `<p class="analysis-empty">אין עדיין משחקים שהתקיימו בטורניר</p>`);
+  }
+
+  const days = ["יום א'","יום ב'","יום ג'","יום ד'","יום ה'","יום ו'","שבת"];
+  const months = ["ינו","פבר","מרץ","אפר","מאי","יונ","יול","אוג","ספט","אוק","נוב","דצמ"];
+
+  // Take the last 4 played matches (most recent last in chronological sort)
+  const recent = played.slice(-4).reverse(); // most recent first
+
+  let cardsHtml = `<div class="recent-grid">`;
+  recent.forEach(m => {
+    const il = matchIsraelTime(m);
+    let whenLabel = m.date;
+    if(il){
+      const [y, mo, d] = il.dateStr.split("-").map(Number);
+      const dateObj = new Date(Date.UTC(y, mo - 1, d));
+      whenLabel = `${days[dateObj.getUTCDay()]} ${dateObj.getUTCDate()} ${months[dateObj.getUTCMonth()]} · ${il.timeStr}`;
+    }
+    const [hs, as] = m.score.ft;
+    const homeWin = hs > as, awayWin = as > hs;
+    const roundLabel = m.round.startsWith("Matchday")
+      ? (m.group ? m.group.replace('Group ','בית ') : m.round)
+      : m.round;
+
+    // Collect all goals sorted by minute
+    const allGoals = [];
+    (m.goals1 || []).forEach(g => allGoals.push({name: g.name, team: m.team1, minute: g.minute, side: 1}));
+    (m.goals2 || []).forEach(g => allGoals.push({name: g.name, team: m.team2, minute: g.minute, side: 2}));
+    allGoals.sort((a,b) => parseGoalMinuteSimple(a.minute) - parseGoalMinuteSimple(b.minute));
+
+    let goalsHtml = "";
+    if(allGoals.length > 0){
+      goalsHtml = `<div class="recent-goals">` +
+        allGoals.map(g => `<div class="recent-goal-row">
+          <span class="goal-minute">${g.minute}'</span>
+          <span class="goal-name">${g.name}</span>
+          <span class="goal-team">${g.team}</span>
+        </div>`).join('') +
+        `</div>`;
+    } else {
+      goalsHtml = `<div class="recent-no-goals">0:0 — אין כובשים רשומים</div>`;
+    }
+
+    cardsHtml += `<div class="recent-card">
+      <div class="recent-when">${whenLabel}</div>
+      <div class="recent-score">
+        <span class="${homeWin ? 'winner' : ''}">${hs}</span>
+        <span class="sep">:</span>
+        <span class="${awayWin ? 'winner' : ''}">${as}</span>
+      </div>
+      <div class="recent-teams">
+        <span class="team-home">${m.team1}</span>
+        <span class="team-away">${m.team2}</span>
+      </div>
+      <div class="recent-meta">${m.ground || ''} · ${roundLabel}</div>
+      ${goalsHtml}
+    </div>`;
+  });
+  cardsHtml += `</div>`;
+
+  return accordion("section-recent", titleInner, cardsHtml);
+}
+
+function parseGoalMinuteSimple(minuteStr){
+  const m = String(minuteStr).match(/^(\d+)(?:\+(\d+))?$/);
+  if(!m) return 0;
+  return parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) : 0);
+}
+
+// ─── Standings ────────────────────────────────────────────────────────────────
+
 function renderStandings(standings){
-  let html = `<div class="section-title" id="section-standings"><h2>מיקומי בתים</h2><div class="rule"></div><span class="count">${Object.keys(standings).length} בתים</span></div>`;
-  html += `<div class="groups-grid">`;
+  const titleInner = `<h2>מיקומי בתים</h2><div class="rule"></div><span class="count">${Object.keys(standings).length} בתים</span>`;
+  let body = `<div class="groups-grid">`;
   for(const [group, teams] of Object.entries(standings)){
     const letter = group.replace("Group ", "");
-    html += `<div class="group-card"><h3>בית ${letter} <span>${group}</span></h3>
+    body += `<div class="group-card"><h3>בית ${letter} <span>${group}</span></h3>
       <table class="standings">
         <thead><tr><th style="text-align:right">קבוצה</th><th>מ</th><th>נ</th><th>ש</th><th>ה</th><th>שה:נג</th><th>נק</th></tr></thead>
         <tbody>`;
-    // NOTE on the goals-for/against cell below: due to Unicode bidi
-    // reordering of digit runs inside RTL text, writing the DOM order as
-    // "ga:gf" (e.g. "1:7") renders visually as "gf:ga" ("7:1", read right
-    // to left) — which matches the "שה:נג" (for:against) header and the
-    // standard football convention. Writing "gf:ga" in the DOM would
-    // visually flip and show "ga:gf" instead. Confirmed empirically;
-    // do not "simplify" this without re-testing in an RTL browser.
     teams.forEach((t, i) => {
-      html += `<tr class="${i < 2 ? 'qualify' : ''}">
+      body += `<tr class="${i < 2 ? 'qualify' : ''}">
         <td class="team">${t.team}</td>
         <td>${t.played}</td>
         <td>${t.win}</td>
@@ -1337,28 +1623,31 @@ function renderStandings(standings){
         <td class="pts">${t.pts}</td>
       </tr>`;
     });
-    html += `</tbody></table></div>`;
+    body += `</tbody></table></div>`;
   }
-  html += `</div>`;
-  return html;
+  body += `</div>`;
+  return accordion("section-standings", titleInner, body);
 }
+
+// ─── Scorers ─────────────────────────────────────────────────────────────────
 
 function renderScorers(scorers){
   if(!scorers.length) return "";
-  let html = `<div class="section-title" id="section-scorers"><h2>מבקיעים</h2><div class="rule"></div><span class="count">${scorers.length} שחקנים</span></div>`;
-  html += `<div class="scorers-list">`;
+  const titleInner = `<h2>מבקיעים</h2><div class="rule"></div><span class="count">${scorers.length} שחקנים</span>`;
+  let body = `<div class="scorers-list">`;
   scorers.slice(0, 30).forEach(s => {
-    html += `<div class="scorer-row">
+    body += `<div class="scorer-row">
       <span><span class="name">${s.name}</span> <span class="team-tag">${s.team}</span></span>
       <span class="goals">${s.count}</span>
     </div>`;
   });
-  html += `</div>`;
-  return html;
+  body += `</div>`;
+  return accordion("section-scorers", titleInner, body);
 }
 
+// ─── Minute Analysis ──────────────────────────────────────────────────────────
+
 function parseMinute(minuteStr){
-  // handles formats like "67", "45+2", "90+3"
   const m = String(minuteStr).match(/^(\d+)(?:\+(\d+))?$/);
   if(!m) return null;
   const base = parseInt(m[1], 10);
@@ -1367,7 +1656,6 @@ function parseMinute(minuteStr){
 }
 
 function buildMinuteBins(matches){
-  // 9 bins of 10 minutes for the match (0-90), plus 2 extra-time bins (45+, 90+)
   const bins = [
     {label:"\u200E1\u200E\u2013\u200E10", min:1, max:10, count:0, half:1},
     {label:"\u200E11\u200E\u2013\u200E20", min:11, max:20, count:0, half:1},
@@ -1382,7 +1670,6 @@ function buildMinuteBins(matches){
     {label:"\u200E86\u200E\u2013\u200E90", min:86, max:90, count:0, half:2},
     {label:"90+", min:null, max:null, count:0, half:2, extraHalf:2},
   ];
-
   matches.forEach(m => {
     [m.goals1, m.goals2].forEach(goals => {
       (goals || []).forEach(g => {
@@ -1404,79 +1691,68 @@ function buildMinuteBins(matches){
 function renderMinuteAnalysis(matches){
   const bins = buildMinuteBins(matches);
   const totalGoals = bins.reduce((s,b) => s + b.count, 0);
+  const titleInner = `<h2>שערים לפי דקה</h2><div class="rule"></div><span class="count">${totalGoals} שערים</span>`;
 
   if(totalGoals === 0){
-    return `<div class="section-title" id="section-minutes"><h2>שערים לפי דקה</h2><div class="rule"></div></div>
-      <div class="minute-chart"><p style="font-family:var(--mono);font-size:0.85rem;color:#8a8270;text-align:center;padding:30px 0">אין עדיין שערים בטורניר — הניתוח יתעדכן עם המשחקים הראשונים</p></div>`;
+    return accordion("section-minutes", titleInner,
+      `<div class="minute-chart"><p style="font-family:var(--mono);font-size:0.85rem;color:#8a8270;text-align:center;padding:30px 0">אין עדיין שערים בטורניר — הניתוח יתעדכן עם המשחקים הראשונים</p></div>`);
   }
 
   const maxCount = Math.max(...bins.map(b => b.count), 1);
-
-  // The chart grid must render left-to-right (minute 1 on the left, 90+ on the
-  // right), matching normal football convention. We force direction:ltr on the
-  // grid containers (see CSS below) so RTL page layout doesn't flip the bars.
   const displayBins = [...bins];
-
-  let bars = "";
-  let labels = "";
+  let bars = "", labels = "";
   displayBins.forEach(b => {
     const heightPct = b.count === 0 ? 1 : Math.max(6, (b.count / maxCount) * 100);
     let cls = "minute-bar";
     if(b.count === 0) cls += " zero";
     else if(b.extraHalf) cls += " extra";
     else if(b.half === 2) cls += " second-half";
-
     bars += `<div class="minute-bar-col">
       ${b.count > 0 ? `<span class="count">${b.count}</span>` : ''}
       <div class="${cls}" style="height:${heightPct}%"></div>
     </div>`;
-    // On mobile the label breaks after the dash: "1–" / "10"
-    const labelHtml = b.label.includes("–")
-      ? b.label.replace("–", "–<wbr>")
-      : b.label;
+    const labelHtml = b.label.includes("–") ? b.label.replace("–", "–<wbr>") : b.label;
     labels += `<span style="direction:ltr;unicode-bidi:isolate">${labelHtml}</span>`;
   });
 
-  // takeaway: busiest bin + first vs second half split
   const busiest = bins.reduce((a,b) => b.count > a.count ? b : a, bins[0]);
   const firstHalfGoals = bins.filter(b => b.half === 1).reduce((s,b) => s + b.count, 0);
   const secondHalfGoals = bins.filter(b => b.half === 2).reduce((s,b) => s + b.count, 0);
   const extraTimeGoals = bins.filter(b => b.extraHalf).reduce((s,b) => s + b.count, 0);
   const secondHalfPct = totalGoals ? Math.round((secondHalfGoals/totalGoals)*100) : 0;
 
-  return `<div class="section-title" id="section-minutes"><h2>שערים לפי דקה</h2><div class="rule"></div><span class="count">${totalGoals} שערים</span></div>
-    <div class="minute-chart">
-      <div class="minute-chart-header">
-        <span>פיזור השערים על פני 90 הדקות</span>
-        <span>${firstHalfGoals} במחצית 1 · ${secondHalfGoals} במחצית 2</span>
-      </div>
-      <div class="minute-bars">${bars}</div>
-      <div class="minute-labels">${labels}</div>
-      <div class="minute-legend">
-        <span><i class="swatch first"></i>מחצית ראשונה</span>
-        <span><i class="swatch second"></i>מחצית שנייה</span>
-        <span><i class="swatch extra"></i>תוספת זמן (45+/90+)</span>
-      </div>
-      <div class="minute-takeaway">
-        הפרק העמוס ביותר הוא <b>${busiest.label}'</b> עם <b>${busiest.count}</b> שערים.
-        ${secondHalfPct}% מהשערים הובקעו במחצית השנייה.
-        ${extraTimeGoals > 0 ? `${extraTimeGoals} שערים הובקעו בתוספת הזמן (דקות 45+/90+).` : ''}
-      </div>
-    </div>`;
+  const body = `<div class="minute-chart">
+    <div class="minute-chart-header">
+      <span>פיזור השערים על פני 90 הדקות</span>
+      <span>${firstHalfGoals} במחצית 1 · ${secondHalfGoals} במחצית 2</span>
+    </div>
+    <div class="minute-bars">${bars}</div>
+    <div class="minute-labels">${labels}</div>
+    <div class="minute-legend">
+      <span><i class="swatch first"></i>מחצית ראשונה</span>
+      <span><i class="swatch second"></i>מחצית שנייה</span>
+      <span><i class="swatch extra"></i>תוספת זמן (45+/90+)</span>
+    </div>
+    <div class="minute-takeaway">
+      הפרק העמוס ביותר הוא <b>${busiest.label}'</b> עם <b>${busiest.count}</b> שערים.
+      ${secondHalfPct}% מהשערים הובקעו במחצית השנייה.
+      ${extraTimeGoals > 0 ? `${extraTimeGoals} שערים הובקעו בתוספת הזמן (דקות 45+/90+).` : ''}
+    </div>
+  </div>`;
+  return accordion("section-minutes", titleInner, body);
 }
 
+// ─── Matches list ─────────────────────────────────────────────────────────────
+
 function renderMatches(matches){
-  let html = `<div class="section-title" id="section-matches"><h2>לוח משחקים ותוצאות <span style="font-family:var(--mono);font-size:0.65em;color:#8a8270;text-transform:none;letter-spacing:0">(שעון ישראל)</span></h2><div class="rule"></div><span class="count">${matches.length} משחקים</span></div>`;
-
+  const titleInner = `<h2>לוח משחקים ותוצאות <span style="font-family:var(--mono);font-size:0.65em;color:#8a8270;text-transform:none;letter-spacing:0">(שעון ישראל)</span></h2><div class="rule"></div><span class="count">${matches.length} משחקים</span>`;
   const withIsrael = matches.map(m => ({...m, _il: matchIsraelTime(m)}));
-
   const sorted = [...withIsrael].sort((a,b) => {
     if(a._il && b._il) return a._il.utc - b._il.utc;
     if(a._il) return -1;
     if(b._il) return 1;
     return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
   });
-
   const byDate = {};
   sorted.forEach(m => {
     const key = m._il ? m._il.dateStr : m.date;
@@ -1484,8 +1760,9 @@ function renderMatches(matches){
     byDate[key].push(m);
   });
 
+  let body = "";
   for(const [date, list] of Object.entries(byDate)){
-    html += `<div class="matchday-block">
+    body += `<div class="matchday-block">
       <p class="matchday-label">${fmtDate(date)} · ${date}</p>`;
     list.forEach(m => {
       const played = !!m.score;
@@ -1493,15 +1770,11 @@ function renderMatches(matches){
       if(played){
         const [hs, as] = m.score.ft;
         const homeWin = hs > as, awayWin = as > hs;
-        // RTL grid: team_home sits to the right of the score block, team_away to its left.
-        // Display away score first (left side) and home score second (right side) so each
-        // number lines up visually with its team.
         scoreHtml = `<span class="${awayWin?'winner':''}">${as}</span><span class="sep">:</span><span class="${homeWin?'winner':''}">${hs}</span>`;
       } else {
         scoreHtml = m._il ? m._il.timeStr : (m.time || "—");
       }
       const roundLabel = m.round.startsWith("Matchday") ? (m.group ? m.group.replace('Group ','בית ') : m.round) : m.round;
-
       let calendarIcon = "";
       if(!played && m._il && m._il.utc.getTime() > Date.now()){
         const key = icsKey(m.team1, m.team2, m._il.utc.toISOString());
@@ -1512,13 +1785,11 @@ function renderMatches(matches){
         };
         calendarIcon = `<button class="add-to-calendar-icon" data-ics-key="${key}" title="הוסף ליומן" aria-label="הוסף ליומן">📅</button>`;
       }
-
       const homeFifa = FIFA_RANKING[m.team1];
       const awayFifa = FIFA_RANKING[m.team2];
       const homeRankBadge = homeFifa ? `<span class="fifa-rank" title="דירוג פיפא (יוני 2026)">#${homeFifa}</span>` : "";
       const awayRankBadge = awayFifa ? `<span class="fifa-rank" title="דירוג פיפא (יוני 2026)" style="margin-right:0;margin-left:6px">#${awayFifa}</span>` : "";
-
-      html += `<div class="match-row ${played?'played':''}">
+      body += `<div class="match-row ${played?'played':''}">
         <span class="date">${m._il ? m._il.timeStr : (m.time || '')}</span>
         <span class="team home">${m.team1}${homeRankBadge}</span>
         <span class="score ${played?'':'notplayed'}">${scoreHtml}</span>
@@ -1526,27 +1797,28 @@ function renderMatches(matches){
         <span class="meta">${m.ground || ''} · ${roundLabel}${calendarIcon}</span>
       </div>`;
     });
-    html += `</div>`;
+    body += `</div>`;
   }
-  return html;
+  return accordion("section-matches", titleInner, body);
 }
+
+// ─── Results Analysis ─────────────────────────────────────────────────────────
 
 function renderResultsAnalysis(matches){
   const played = matches.filter(m => m.score);
+  const titleInner = `<h2>ניתוח תוצאות</h2><div class="rule"></div><span class="count">${played.length} משחקים שהתקיימו</span>`;
 
   if(played.length === 0){
-    return `<div class="section-title" id="section-results"><h2>ניתוח תוצאות</h2><div class="rule"></div></div>
-      <div class="results-grid">
+    return accordion("section-results", titleInner,
+      `<div class="results-grid">
         <div class="analysis-card"><h3>תוצאות שכיחות</h3><p class="analysis-empty">אין עדיין משחקים שהתקיימו</p></div>
         <div class="analysis-card"><h3>התפלגות שערים למשחק</h3><p class="analysis-empty">אין עדיין משחקים שהתקיימו</p></div>
-      </div>`;
+      </div>`);
   }
 
-  // --- scoreline frequency ---
   const scorelineCounts = {};
   played.forEach(m => {
     const [hs, as] = m.score.ft;
-    // normalize so e.g. 2:1 and 1:2 count under one "shape" but keep the higher score first
     const big = Math.max(hs, as), small = Math.min(hs, as);
     const key = `${big}:${small}`;
     scorelineCounts[key] = (scorelineCounts[key] || 0) + 1;
@@ -1567,7 +1839,6 @@ function renderResultsAnalysis(matches){
     </div>`;
   });
 
-  // --- goals-per-match distribution ---
   const goalCounts = played.map(m => m.score.ft[0] + m.score.ft[1]);
   const maxGoals = Math.max(...goalCounts);
   const dist = {};
@@ -1586,49 +1857,41 @@ function renderResultsAnalysis(matches){
     distLabels += `<span>${b.goals}</span>`;
   });
 
-  // takeaways
   const topScoreline = scorelines[0];
   const avgGoals = (goalCounts.reduce((s,g)=>s+g,0) / goalCounts.length).toFixed(2);
   const modeBin = bins.reduce((a,b) => b.count > a.count ? b : a, bins[0]);
   const zeroZero = scorelineCounts["0:0"] || 0;
 
-  return `<div class="section-title" id="section-results"><h2>ניתוח תוצאות</h2><div class="rule"></div><span class="count">${played.length} משחקים שהתקיימו</span></div>
-    <div class="results-grid">
-      <div class="analysis-card">
-        <h3>תוצאות שכיחות</h3>
-        ${scorelineHtml}
-        <div class="analysis-takeaway">
-          התוצאה הנפוצה ביותר היא <b>${topScoreline.label}</b> (${topScoreline.count} משחקים).
-          ${zeroZero > 0 ? ` ${zeroZero} משחקים הסתיימו 0:0.` : ''}
-        </div>
+  const body = `<div class="results-grid">
+    <div class="analysis-card">
+      <h3>תוצאות שכיחות</h3>
+      ${scorelineHtml}
+      <div class="analysis-takeaway">
+        התוצאה הנפוצה ביותר היא <b>${topScoreline.label}</b> (${topScoreline.count} משחקים).
+        ${zeroZero > 0 ? ` ${zeroZero} משחקים הסתיימו 0:0.` : ''}
       </div>
-      <div class="analysis-card">
-        <h3>התפלגות שערים למשחק</h3>
-        <div class="goals-dist-bars" style="--n-bins:${bins.length}">${distBars}</div>
-        <div class="goals-dist-labels" style="--n-bins:${bins.length}">${distLabels}</div>
-        <div class="analysis-takeaway">
-          ממוצע <b>${avgGoals}</b> שערים למשחק. הכי שכיח: <b>${modeBin.goals}</b> שערים במשחק (${modeBin.count} משחקים).
-        </div>
+    </div>
+    <div class="analysis-card">
+      <h3>התפלגות שערים למשחק</h3>
+      <div class="goals-dist-bars" style="--n-bins:${bins.length}">${distBars}</div>
+      <div class="goals-dist-labels" style="--n-bins:${bins.length}">${distLabels}</div>
+      <div class="analysis-takeaway">
+        ממוצע <b>${avgGoals}</b> שערים למשחק. הכי שכיח: <b>${modeBin.goals}</b> שערים במשחק (${modeBin.count} משחקים).
       </div>
-    </div>`;
+    </div>
+  </div>`;
+  return accordion("section-results", titleInner, body);
 }
 
-// --- FIFA ranking based analysis ---------------------------------------
+// ─── Upsets ───────────────────────────────────────────────────────────────────
 
-// Finds matches where the lower-ranked (by FIFA ranking) team avoided
-// defeat against a significantly higher-ranked opponent — i.e. an upset
-// (win) or a notable draw. Only matches where both teams have a known
-// FIFA ranking are considered. Sorted by rank gap, biggest surprise first.
 function findUpsets(matches){
   const played = matches.filter(m => m.score);
   const upsets = [];
-
   played.forEach(m => {
     const r1 = FIFA_RANKING[m.team1], r2 = FIFA_RANKING[m.team2];
     if(r1 === undefined || r2 === undefined) return;
-
     const [hs, as] = m.score.ft;
-    // lower FIFA rank number = stronger team
     let underdog, favorite, underdogRank, favoriteRank, outcome;
     if(r1 > r2){
       underdog = m.team1; favorite = m.team2;
@@ -1638,17 +1901,12 @@ function findUpsets(matches){
       underdog = m.team2; favorite = m.team1;
       underdogRank = r2; favoriteRank = r1;
       outcome = as > hs ? "win" : as === hs ? "draw" : null;
-    } else {
-      return; // identical rank, not meaningful as an "upset"
-    }
-
+    } else { return; }
     if(!outcome) return;
     const rankGap = underdogRank - favoriteRank;
-    if(rankGap < 5) return; // require a meaningful gap to call it a surprise
-
+    if(rankGap < 5) return;
     upsets.push({m, underdog, favorite, underdogRank, favoriteRank, rankGap, outcome});
   });
-
   upsets.sort((a,b) => b.rankGap - a.rankGap);
   return upsets;
 }
@@ -1656,26 +1914,22 @@ function findUpsets(matches){
 function renderUpsets(matches){
   const upsets = findUpsets(matches);
   const played = matches.filter(m => m.score).length;
-
-  let html = `<div class="section-title" id="section-upsets"><h2>הפתעות הטורניר <span style="font-family:var(--mono);font-size:0.65em;color:#8a8270;text-transform:none;letter-spacing:0">(לפי דירוג פיפא יוני 2026)</span></h2><div class="rule"></div><span class="count">${upsets.length} הפתעות</span></div>`;
+  const titleInner = `<h2>הפתעות הטורניר <span style="font-family:var(--mono);font-size:0.65em;color:#8a8270;text-transform:none;letter-spacing:0">(לפי דירוג פיפא יוני 2026)</span></h2><div class="rule"></div><span class="count">${upsets.length} הפתעות</span>`;
 
   if(played === 0){
-    return html + `<p class="analysis-empty">אין עדיין משחקים שהתקיימו</p>`;
+    return accordion("section-upsets", titleInner, `<p class="analysis-empty">אין עדיין משחקים שהתקיימו</p>`);
   }
   if(upsets.length === 0){
-    return html + `<p class="analysis-empty">עד כה אין הפתעות גדולות — הקבוצות המדורגות גבוה יותר עומדות בציפיות</p>`;
+    return accordion("section-upsets", titleInner, `<p class="analysis-empty">עד כה אין הפתעות גדולות — הקבוצות המדורגות גבוה יותר עומדות בציפיות</p>`);
   }
 
-  html += `<div class="upset-grid">`;
+  let body = `<div class="upset-grid">`;
   upsets.slice(0, 12).forEach(u => {
     const [hs, as] = u.m.score.ft;
     const roundLabel = u.m.round.startsWith("Matchday") ? (u.m.group ? u.m.group.replace('Group ','בית ') : u.m.round) : u.m.round;
     const tagClass = u.outcome === "win" ? "full" : "draw";
-    const tagText = u.outcome === "win"
-      ? `${u.underdog} ניצחה!`
-      : `${u.underdog} השיגה שוויון`;
-
-    html += `<div class="comeback-card">
+    const tagText = u.outcome === "win" ? `${u.underdog} ניצחה!` : `${u.underdog} השיגה שוויון`;
+    body += `<div class="comeback-card">
       <div class="cb-header">
         <span class="cb-teams">${u.m.team1} – ${u.m.team2}</span>
         <span class="cb-score">${hs}:${as}</span>
@@ -1688,25 +1942,18 @@ function renderUpsets(matches){
       </div>
     </div>`;
   });
-  html += `</div>`;
-  return html;
+  body += `</div>`;
+  return accordion("section-upsets", titleInner, body);
 }
 
+// ─── Comebacks ───────────────────────────────────────────────────────────────
 
-
-// Reconstructs the running goal-difference (team1 - team2) timeline for a match
-// from its goals1/goals2 arrays, and detects whether the result represents a
-// "comeback": a team that was behind at some point in the match finished level
-// or ahead.
 function analyzeComeback(m){
   if(!m.score) return null;
-
   const events = [];
   (m.goals1 || []).forEach(g => events.push({minute: parseGoalMinute(g.minute), minuteLabel: g.minute, side: 1, scorer: g.name, team: m.team1}));
   (m.goals2 || []).forEach(g => events.push({minute: parseGoalMinute(g.minute), minuteLabel: g.minute, side: 2, scorer: g.name, team: m.team2}));
   events.sort((a,b) => a.minute - b.minute);
-
-  // timeline of {minute, diff} where diff = team1Goals - team2Goals, starting at (0,0)
   const timeline = [{minute: 0, diff: 0}];
   let d1 = 0, d2 = 0;
   events.forEach(e => {
@@ -1715,23 +1962,14 @@ function analyzeComeback(m){
   });
   const finalDiff = m.score.ft[0] - m.score.ft[1];
   timeline.push({minute: 90, diff: finalDiff});
-
-  // Determine the deepest deficit faced by each side during the match
   let minDiff = 0, maxDiff = 0;
   timeline.forEach(p => { minDiff = Math.min(minDiff, p.diff); maxDiff = Math.max(maxDiff, p.diff); });
-
   let comeback = null;
-  // Team2 was behind (diff > 0 at some point) but finished level or ahead (finalDiff <= 0)
-  if(maxDiff > 0 && finalDiff <= 0){
-    comeback = {team: 2, deficit: maxDiff, type: finalDiff === 0 ? "draw" : "full"};
-  }
-  // Team1 was behind (diff < 0 at some point) but finished level or ahead (finalDiff >= 0)
+  if(maxDiff > 0 && finalDiff <= 0) comeback = {team: 2, deficit: maxDiff, type: finalDiff === 0 ? "draw" : "full"};
   if(minDiff < 0 && finalDiff >= 0){
     const candidate = {team: 1, deficit: -minDiff, type: finalDiff === 0 ? "draw" : "full"};
-    // if both sides technically qualify (rare edge case), keep the bigger swing
     if(!comeback || candidate.deficit > comeback.deficit) comeback = candidate;
   }
-
   if(!comeback) return null;
   return {timeline, events, ...comeback};
 }
@@ -1739,24 +1977,13 @@ function analyzeComeback(m){
 function parseGoalMinute(minuteStr){
   const m = String(minuteStr).match(/^(\d+)(?:\+(\d+))?$/);
   if(!m) return 0;
-  const base = parseInt(m[1], 10);
-  const extra = m[2] ? parseInt(m[2], 10) : 0;
-  return Math.min(base + extra, 90);
+  return Math.min(parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) : 0), 90);
 }
 
-// Builds a small SVG "drama chart": a step-line of the goal difference (team1 - team2)
-// across the match, with a zero baseline (tie) and color coding for which side is ahead.
 function svgEscape(str){
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
-// Lists each goal in chronological order with its minute and the gap (in
-// minutes) since the previous goal (or kickoff for the first goal), e.g.:
-//   "דקה 21' (21' מתחילת המשחק) — Jovo Lukić, Bosnia & Herzegovina"
-//   "דקה 78' (57' מהשער הקודם) — Cyle Larin, Canada"
 function dramaNarrative(events){
   return events.map((e, i) => {
     const prevMinute = i === 0 ? 0 : events[i-1].minute;
@@ -1766,82 +1993,56 @@ function dramaNarrative(events){
   });
 }
 
-// Builds an SVG "drama chart": an area chart of the goal difference (team1 - team2)
-// across the match. Green fill = team1 ahead, red fill = team2 ahead, with a zero
-// baseline (tie), integer gridlines, minute markers, and goal event markers.
 function renderDramaChart(timeline, finalDiff, team1, team2){
   const W = 600, H = 180;
   const padL = 38, padR = 14, padT = 18, padB = 26;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
-
   const maxAbs = Math.max(1, ...timeline.map(p => Math.abs(p.diff)));
   const xFor = min => padL + (min / 90) * plotW;
   const yFor = diff => padT + plotH/2 - (diff / maxAbs) * (plotH/2);
   const zeroY = yFor(0);
-
-  // expand the step timeline into explicit (x,y) points (including the step jumps)
   const points = [{x: xFor(timeline[0].minute), y: yFor(timeline[0].diff)}];
   for(let i = 1; i < timeline.length; i++){
     const prev = timeline[i-1], cur = timeline[i];
     points.push({x: xFor(cur.minute), y: yFor(prev.diff)});
     points.push({x: xFor(cur.minute), y: yFor(cur.diff)});
   }
-
   const linePath = "M " + points.map(p => `${p.x} ${p.y}`).join(" L ");
-
-  // Build two area polygons by clamping each point's y to the zero line:
-  // "above" polygon shows only the portion above zero (team1 ahead),
-  // "below" polygon shows only the portion below zero (team2 ahead).
   const abovePoints = points.map(p => ({x: p.x, y: Math.min(p.y, zeroY)}));
   const belowPoints = points.map(p => ({x: p.x, y: Math.max(p.y, zeroY)}));
   const aboveArea = `M ${abovePoints.map(p=>`${p.x} ${p.y}`).join(" L ")} L ${xFor(90)} ${zeroY} L ${xFor(0)} ${zeroY} Z`;
   const belowArea = `M ${belowPoints.map(p=>`${p.x} ${p.y}`).join(" L ")} L ${xFor(90)} ${zeroY} L ${xFor(0)} ${zeroY} Z`;
-
-  // integer gridlines for each whole goal-difference value within range
-  let gridlines = "";
-  let gridLabels = "";
+  let gridlines = "", gridLabels = "";
   for(let v = -maxAbs; v <= maxAbs; v++){
     const y = yFor(v);
     const isZero = v === 0;
     gridlines += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${isZero?'#9a9282':'#e3ddca'}" stroke-width="${isZero?1.2:1}" stroke-dasharray="${isZero?'none':'3,3'}"/>`;
-    if(v !== 0){
-      gridLabels += `<text x="${padL-6}" y="${y+3}" font-family="monospace" font-size="13" fill="#a89e88" text-anchor="end">${v>0?'+':''}${v}</text>`;
-    }
+    if(v !== 0) gridLabels += `<text x="${padL-6}" y="${y+3}" font-family="monospace" font-size="13" fill="#a89e88" text-anchor="end">${v>0?'+':''}${v}</text>`;
   }
-
-  // minute markers
   let minuteLabels = "";
   [0, 45, 90].forEach(min => {
     minuteLabels += `<text x="${xFor(min)}" y="${H-6}" font-family="monospace" font-size="13" fill="#a89e88" text-anchor="middle">${min}'</text>`;
   });
-
-  // goal markers (skip synthetic start/end points)
   let markers = "";
   timeline.slice(1, -1).forEach(p => {
     const x = xFor(p.minute), y = yFor(p.diff);
     const dotColor = p.diff > 0 ? "var(--pitch)" : p.diff < 0 ? "var(--red-card)" : "var(--gold)";
     markers += `<circle cx="${x}" cy="${y}" r="3.5" fill="${dotColor}" stroke="#fffdf7" stroke-width="1.5"/>`;
   });
-
-  // duration labels: for each segment between consecutive timeline points,
-  // show how many minutes that scoreline held (only if the segment is wide
-  // enough on screen to fit a label without crowding).
   let durationLabels = "";
   for(let i = 0; i < timeline.length - 1; i++){
     const seg = timeline[i], next = timeline[i+1];
     const duration = next.minute - seg.minute;
     if(duration <= 0) continue;
     const segWidthPx = xFor(next.minute) - xFor(seg.minute);
-    if(segWidthPx < 36) continue; // too narrow to label cleanly
+    if(segWidthPx < 36) continue;
     const midX = (xFor(seg.minute) + xFor(next.minute)) / 2;
     const y = yFor(seg.diff);
-    // place label just above the line if team1 ahead/level, just below if team2 ahead
     const labelY = seg.diff >= 0 ? y - 8 : y + 14;
     const labelColor = seg.diff > 0 ? "var(--pitch)" : seg.diff < 0 ? "var(--red-card)" : "#6b6557";
     durationLabels += `<text x="${midX}" y="${labelY}" font-family="monospace" font-size="13" font-weight="700" fill="${labelColor}" text-anchor="middle">${duration}'</text>`;
   }
-
   return `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${gridlines}
     <path d="${aboveArea}" fill="var(--pitch)" opacity="0.18"/>
@@ -1858,9 +2059,10 @@ function renderDramaChart(timeline, finalDiff, team1, team2){
 
 function renderComebackTracker(matches){
   const played = matches.filter(m => m.score);
+  const titleInner = `<h2>משחקים עם מהפך</h2><div class="rule"></div>`;
+
   if(played.length === 0){
-    return `<div class="section-title" id="section-comebacks"><h2>משחקים עם מהפך</h2><div class="rule"></div></div>
-      <p class="analysis-empty">אין עדיין משחקים שהתקיימו</p>`;
+    return accordion("section-comebacks", titleInner, `<p class="analysis-empty">אין עדיין משחקים שהתקיימו</p>`);
   }
 
   const comebacks = played
@@ -1868,15 +2070,15 @@ function renderComebackTracker(matches){
     .filter(x => x.cb)
     .sort((a,b) => b.cb.deficit - a.cb.deficit);
 
-  let html = `<div class="section-title" id="section-comebacks"><h2>משחקים עם מהפך</h2><div class="rule"></div><span class="count">${comebacks.length} מתוך ${played.length}</span></div>`;
+  const titleInnerFull = `<h2>משחקים עם מהפך</h2><div class="rule"></div><span class="count">${comebacks.length} מתוך ${played.length}</span>`;
 
   if(comebacks.length === 0){
-    return html + `<p class="analysis-empty">אף משחק עד כה לא הסתיים במהפך — בכל המשחקים שהתקיימו, הקבוצה שהתקדמה בתוצאה לא איבדה את היתרון</p>`;
+    return accordion("section-comebacks", titleInnerFull,
+      `<p class="analysis-empty">אף משחק עד כה לא הסתיים במהפך — בכל המשחקים שהתקיימו, הקבוצה שהתקדמה בתוצאה לא איבדה את היתרון</p>`);
   }
 
-  html += `<p class="comeback-summary"><b>${comebacks.length}</b> מתוך ${played.length} המשחקים שהתקיימו (${Math.round(comebacks.length/played.length*100)}%) הסתיימו במהפך — קבוצה שפיגרה בתוצאה סיימה לפחות בשוויון.</p>`;
-
-  html += `<div class="comeback-grid">`;
+  let body = `<p class="comeback-summary"><b>${comebacks.length}</b> מתוך ${played.length} המשחקים שהתקיימו (${Math.round(comebacks.length/played.length*100)}%) הסתיימו במהפך — קבוצה שפיגרה בתוצאה סיימה לפחות בשוויון.</p>`;
+  body += `<div class="comeback-grid">`;
   comebacks.forEach(({m, cb}) => {
     const [hs, as] = m.score.ft;
     const finalDiff = hs - as;
@@ -1884,10 +2086,8 @@ function renderComebackTracker(matches){
     const tag = cb.type === "full"
       ? `<span class="cb-tag full">מהפך מלא — ${teamBehind} הפכה לניצחון</span>`
       : `<span class="cb-tag draw">השוואת תוצאה — ${teamBehind} השלימה לשוויון</span>`;
-
     const roundLabel = m.round.startsWith("Matchday") ? (m.group ? m.group.replace('Group ','בית ') : m.round) : m.round;
-
-    html += `<div class="comeback-card">
+    body += `<div class="comeback-card">
       <div class="cb-header">
         <span class="cb-teams">${m.team1} – ${m.team2}</span>
         <span class="cb-score">${hs}:${as}</span>
@@ -1899,15 +2099,12 @@ function renderComebackTracker(matches){
       <div class="cb-narrative">${dramaNarrative(cb.events).map(l => `<p>${l}</p>`).join('')}</div>
     </div>`;
   });
-  html += `</div>`;
-  return html;
+  body += `</div>`;
+  return accordion("section-comebacks", titleInnerFull, body);
 }
 
-// --- Scatter charts -----------------------------------------------------
+// ─── Scatter Charts ───────────────────────────────────────────────────────────
 
-// Splits a played match's goals into first-half (incl. 45+ extra time) and
-// second-half (incl. 90+ extra time) counts, using the same minute-parsing
-// convention as buildMinuteBins.
 function splitGoalsByHalf(m){
   let firstHalf = 0, secondHalf = 0;
   [m.goals1, m.goals2].forEach(goals => {
@@ -1920,33 +2117,18 @@ function splitGoalsByHalf(m){
   return {firstHalf, secondHalf};
 }
 
-// Escapes a tooltip HTML string for safe inclusion inside a double-quoted
-// HTML attribute (data-tooltip). The tooltip content is itself HTML (it may
-// contain entities like &amp; from svgEscape, plus <b>/<br> tags) which
-// should pass through unchanged into the attribute and be reinterpreted as
-// HTML when read back via getAttribute() + innerHTML — only the double-quote
-// delimiter itself needs escaping here.
 function attrEscape(str){
   return String(str).replace(/"/g, "&quot;");
 }
 
-// Renders a generic SVG scatter plot. `points` is an array of
-// {x, y, tooltip} (tooltip is an HTML string shown on hover). Points
-// sharing the same (x,y) get a small deterministic jitter so they don't
-// fully overlap. `diagonal` (optional) draws a y=x reference line.
-// `yMin` (optional, default 0) allows negative Y axis values; when non-zero
-// a bold zero-line is drawn across the plot.
 function renderScatterSvg({points, xMax, yMax, yMin = 0, xLabel, yLabel, diagonal}){
   const W = 340, H = 300;
   const padL = 44, padR = 14, padT = 14, padB = 38;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
-
   const yRange = yMax - yMin;
   const xFor = x => padL + (x / xMax) * plotW;
   const yFor = y => padT + plotH - ((y - yMin) / yRange) * plotH;
-
-  // gridlines — cover full y range from yMin to yMax
   const xStep = Math.max(1, Math.round(xMax / 5));
   const rawYStep = yRange / 5;
   const yStep = Math.max(1, Math.round(rawYStep));
@@ -1956,46 +2138,35 @@ function renderScatterSvg({points, xMax, yMax, yMin = 0, xLabel, yLabel, diagona
     gridlines += `<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${padT+plotH}" stroke="#e3ddca" stroke-width="1" stroke-dasharray="3,3"/>`;
     xTicks += `<text x="${x.toFixed(1)}" y="${H-padB+20}" font-family="monospace" font-size="11" fill="#a89e88" text-anchor="middle">${v}</text>`;
   }
-  // round yMin down to a clean step boundary
   const yStart = Math.ceil(yMin / yStep) * yStep;
   for(let v = yStart; v <= yMax; v += yStep){
-    if(v === 0) continue; // zero line drawn separately below
+    if(v === 0) continue;
     const y = yFor(v);
     gridlines += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#e3ddca" stroke-width="1" stroke-dasharray="3,3"/>`;
     yTicks += `<text x="${padL-8}" y="${(y+4).toFixed(1)}" font-family="monospace" font-size="11" fill="#a89e88" text-anchor="end">${v}</text>`;
   }
-
-  // axes
   let axes = `<line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="#9a9282" stroke-width="1.2"/>`;
   axes += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#9a9282" stroke-width="1.2"/>`;
-
-  // zero line — bold and labeled when the axis spans negative values
   let zeroLine = "";
   if(yMin < 0 && yMax > 0){
     const zy = yFor(0);
     zeroLine = `<line x1="${padL}" y1="${zy.toFixed(1)}" x2="${W-padR}" y2="${zy.toFixed(1)}" stroke="#9a9282" stroke-width="1.8"/>`;
     yTicks += `<text x="${padL-8}" y="${(zy+4).toFixed(1)}" font-family="monospace" font-size="11" font-weight="700" fill="#6b6557" text-anchor="end">0</text>`;
   } else {
-    // standard case: always tick zero on Y
     const zy = yFor(0);
     yTicks += `<text x="${padL-8}" y="${(zy+4).toFixed(1)}" font-family="monospace" font-size="11" fill="#a89e88" text-anchor="end">0</text>`;
   }
-
-  // optional y=x reference line
   let diagonalPath = "";
   if(diagonal){
     const dMax = Math.min(xMax, yMax);
     diagonalPath = `<line x1="${xFor(0).toFixed(1)}" y1="${yFor(0).toFixed(1)}" x2="${xFor(dMax).toFixed(1)}" y2="${yFor(dMax).toFixed(1)}" stroke="#c8c0aa" stroke-width="1.5" stroke-dasharray="4,4"/>`;
   }
-
-  // jitter overlapping points deterministically based on a counter per (x,y)
   const seen = {};
   let dots = "";
   points.forEach(p => {
     const key = `${p.x},${p.y}`;
     const n = (seen[key] || 0);
     seen[key] = n + 1;
-    // spiral small offsets for repeated points at the same coordinate
     const angle = n * 2.4;
     const dist = n === 0 ? 0 : 3 + n * 1.6;
     const dx = Math.cos(angle) * dist;
@@ -2004,7 +2175,6 @@ function renderScatterSvg({points, xMax, yMax, yMin = 0, xLabel, yLabel, diagona
     const cy = (yFor(p.y) + dy).toFixed(1);
     dots += `<circle class="scatter-point" cx="${cx}" cy="${cy}" r="5" fill="${p.color || 'var(--pitch)'}" stroke="#fffdf7" stroke-width="1.5" data-tooltip="${attrEscape(p.tooltip)}"/>`;
   });
-
   return `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${gridlines}
     ${zeroLine}
@@ -2018,43 +2188,26 @@ function renderScatterSvg({points, xMax, yMax, yMin = 0, xLabel, yLabel, diagona
   </svg></div>`;
 }
 
-// Scatter 1: first-half goals (x) vs second-half goals (y) for every played
-// match, with a y=x reference line — shows whether matches tend to "wake up"
-// in the second half or stay flat/front-loaded.
 function renderHalfGoalsScatter(matches){
   const played = matches.filter(m => m.score);
-  if(played.length === 0){
-    return `<div class="analysis-card"><h3>שערים: מחצית 1 מול מחצית 2</h3><p class="analysis-empty">אין עדיין משחקים שהתקיימו</p></div>`;
-  }
-
+  if(played.length === 0) return `<div class="analysis-card"><h3>שערים: מחצית 1 מול מחצית 2</h3><p class="analysis-empty">אין עדיין משחקים שהתקיימו</p></div>`;
   const points = played.map(m => {
     const {firstHalf, secondHalf} = splitGoalsByHalf(m);
     const [hs, as] = m.score.ft;
     const roundLabel = m.round.startsWith("Matchday") ? (m.group ? m.group.replace('Group ','בית ') : m.round) : m.round;
-    return {
-      x: firstHalf, y: secondHalf,
-      tooltip: `<b>${svgEscape(m.team1)} ${hs}:${as} ${svgEscape(m.team2)}</b><br>${roundLabel}<br>מחצית 1: ${firstHalf} שערים · מחצית 2: ${secondHalf} שערים`
-    };
+    return { x: firstHalf, y: secondHalf, tooltip: `<b>${svgEscape(m.team1)} ${hs}:${as} ${svgEscape(m.team2)}</b><br>${roundLabel}<br>מחצית 1: ${firstHalf} שערים · מחצית 2: ${secondHalf} שערים` };
   });
-
   const xMax = Math.max(2, ...points.map(p => p.x));
   const yMax = Math.max(2, ...points.map(p => p.y));
-
   const totalFirst = points.reduce((s,p)=>s+p.x, 0);
   const totalSecond = points.reduce((s,p)=>s+p.y, 0);
   const above = points.filter(p => p.y > p.x).length;
   const below = points.filter(p => p.y < p.x).length;
   const onLine = points.length - above - below;
-
   let takeaway;
-  if(above > below){
-    takeaway = `ב-<b>${above}</b> מתוך ${points.length} משחקים נכבשו יותר שערים במחצית השנייה מאשר בראשונה (סה״כ ${totalSecond} מול ${totalFirst}) — נקודות מעל הקו המקווקו.`;
-  } else if(below > above){
-    takeaway = `ב-<b>${below}</b> מתוך ${points.length} משחקים נכבשו יותר שערים במחצית הראשונה מאשר בשנייה (סה״כ ${totalFirst} מול ${totalSecond}) — נקודות מתחת לקו המקווקו.`;
-  } else {
-    takeaway = `${onLine} מתוך ${points.length} משחקים הסתיימו עם פיזור שערים שווה בין המחציות (סה״כ ${totalFirst} במחצית 1, ${totalSecond} במחצית 2).`;
-  }
-
+  if(above > below) takeaway = `ב-<b>${above}</b> מתוך ${points.length} משחקים נכבשו יותר שערים במחצית השנייה מאשר בראשונה (סה״כ ${totalSecond} מול ${totalFirst}) — נקודות מעל הקו המקווקו.`;
+  else if(below > above) takeaway = `ב-<b>${below}</b> מתוך ${points.length} משחקים נכבשו יותר שערים במחצית הראשונה מאשר בשנייה (סה״כ ${totalFirst} מול ${totalSecond}) — נקודות מתחת לקו המקווקו.`;
+  else takeaway = `${onLine} מתוך ${points.length} משחקים הסתיימו עם פיזור שערים שווה בין המחציות (סה״כ ${totalFirst} במחצית 1, ${totalSecond} במחצית 2).`;
   return `<div class="analysis-card">
     <h3>שערים: מחצית 1 מול מחצית 2</h3>
     ${renderScatterSvg({points, xMax, yMax, xLabel:"שערים במחצית 1", yLabel:"שערים במחצית 2", diagonal:true})}
@@ -2062,54 +2215,30 @@ function renderHalfGoalsScatter(matches){
   </div>`;
 }
 
-// Scatter 2: FIFA ranking gap between the two teams (x) vs goal difference
-// from the perspective of the higher-ranked (favorite) team (y).
-// y > 0 → favorite won, y = 0 → draw, y < 0 → upset.
-// Only matches where both teams have a known FIFA ranking are included.
 function renderRankGapScatter(matches){
   const played = matches.filter(m => m.score);
   const points = [];
-
   played.forEach(m => {
     const r1 = FIFA_RANKING[m.team1], r2 = FIFA_RANKING[m.team2];
     if(r1 === undefined || r2 === undefined) return;
-
     const [hs, as] = m.score.ft;
     const gap = Math.abs(r1 - r2);
-    // lower FIFA rank number = stronger (higher-ranked) team
-    // favoriteDiff > 0 means the favorite won, < 0 means upset
     const favoriteDiff = r1 < r2 ? (hs - as) : (as - hs);
     const favorite = r1 < r2 ? m.team1 : m.team2;
     const underdog  = r1 < r2 ? m.team2 : m.team1;
     const favoriteRank = Math.min(r1, r2);
     const underdogRank  = Math.max(r1, r2);
-
     const roundLabel = m.round.startsWith("Matchday") ? (m.group ? m.group.replace('Group ','בית ') : m.round) : m.round;
     const resultLabel = favoriteDiff > 0 ? `ניצחון הפייבוריט (+${favoriteDiff})` : favoriteDiff < 0 ? `הפתעה! (${favoriteDiff})` : `תיקו (0)`;
-
-    // color: green = favorite won, gold = draw, red = upset
     const color = favoriteDiff > 0 ? 'var(--pitch)' : favoriteDiff < 0 ? 'var(--red-card)' : 'var(--gold)';
-
-    points.push({
-      x: gap,
-      y: favoriteDiff,
-      color,
-      tooltip: `<b>${svgEscape(m.team1)} ${hs}:${as} ${svgEscape(m.team2)}</b><br>${roundLabel}<br>פייבוריט: ${svgEscape(favorite)} (#${favoriteRank}) · אנדרדוג: ${svgEscape(underdog)} (#${underdogRank})<br>פער דירוג: ${gap} · ${resultLabel}`
-    });
+    points.push({ x: gap, y: favoriteDiff, color, tooltip: `<b>${svgEscape(m.team1)} ${hs}:${as} ${svgEscape(m.team2)}</b><br>${roundLabel}<br>פייבוריט: ${svgEscape(favorite)} (#${favoriteRank}) · אנדרדוג: ${svgEscape(underdog)} (#${underdogRank})<br>פער דירוג: ${gap} · ${resultLabel}` });
   });
-
-  if(points.length === 0){
-    return `<div class="analysis-card"><h3>פער דירוג פיפא מול הפרש שערים</h3><p class="analysis-empty">אין עדיין משחקים שהתקיימו בין נבחרות עם דירוג פיפא ידוע</p></div>`;
-  }
-
+  if(points.length === 0) return `<div class="analysis-card"><h3>פער דירוג פיפא מול הפרש שערים</h3><p class="analysis-empty">אין עדיין משחקים שהתקיימו בין נבחרות עם דירוג פיפא ידוע</p></div>`;
   const xMax = Math.max(5, ...points.map(p => p.x));
   const yRawMax = Math.max(...points.map(p => p.y));
   const yRawMin = Math.min(...points.map(p => p.y));
-  // give 1-goal breathing room above/below data, minimum ±2 so chart is readable
   const yMax = Math.max(2, yRawMax + 1);
   const yMin = Math.min(-2, yRawMin - 1);
-
-  // takeaway: compare avg favorite goal-diff for close vs wide ranking gaps
   const median = [...points.map(p=>p.x)].sort((a,b)=>a-b)[Math.floor(points.length/2)];
   const closeMatches = points.filter(p => p.x <= median);
   const farMatches   = points.filter(p => p.x > median);
@@ -2118,18 +2247,11 @@ function renderRankGapScatter(matches){
   const favWins   = points.filter(p => p.y > 0).length;
   const avgClose  = closeMatches.length ? closeMatches.reduce((s,p)=>s+p.y,0)/closeMatches.length : 0;
   const avgFar    = farMatches.length   ? farMatches.reduce((s,p)=>s+p.y,0)/farMatches.length     : 0;
-
   let takeaway;
-  if(farMatches.length === 0 || closeMatches.length === 0){
-    takeaway = `${favWins} ניצחונות לפייבוריט, ${draws} תיקו, ${upsets} הפתעות מתוך ${points.length} משחקים.`;
-  } else if(avgFar > avgClose + 0.3){
-    takeaway = `עם פער דירוג גדול יותר (מעל ${median}), הפייבוריט ניצח בהפרש גדול יותר בממוצע — <b>${avgFar.toFixed(2)}</b> לעומת <b>${avgClose.toFixed(2)}</b> במשחקים מאוזנים יותר. ${upsets > 0 ? `${upsets} הפתעות (נקודות מתחת לקו האפס).` : ''}`;
-  } else if(avgClose > avgFar + 0.3){
-    takeaway = `פער דירוג קטן דווקא מיטיב עם הפייבוריט — הפרש שערים ממוצע של <b>${avgClose.toFixed(2)}</b> לעומת <b>${avgFar.toFixed(2)}</b> במשחקים עם פער דירוג גדול. ${upsets > 0 ? `${upsets} הפתעות (נקודות מתחת לקו האפס).` : ''}`;
-  } else {
-    takeaway = `אין קשר ברור בין פער הדירוג להפרש השערים. ${favWins} ניצחונות לפייבוריט, ${draws} תיקו, ${upsets > 0 ? `ו-${upsets} הפתעות` : 'ואפס הפתעות'} מתוך ${points.length} משחקים.`;
-  }
-
+  if(farMatches.length === 0 || closeMatches.length === 0) takeaway = `${favWins} ניצחונות לפייבוריט, ${draws} תיקו, ${upsets} הפתעות מתוך ${points.length} משחקים.`;
+  else if(avgFar > avgClose + 0.3) takeaway = `עם פער דירוג גדול יותר (מעל ${median}), הפייבוריט ניצח בהפרש גדול יותר בממוצע — <b>${avgFar.toFixed(2)}</b> לעומת <b>${avgClose.toFixed(2)}</b> במשחקים מאוזנים יותר. ${upsets > 0 ? `${upsets} הפתעות (נקודות מתחת לקו האפס).` : ''}`;
+  else if(avgClose > avgFar + 0.3) takeaway = `פער דירוג קטן דווקא מיטיב עם הפייבוריט — הפרש שערים ממוצע של <b>${avgClose.toFixed(2)}</b> לעומת <b>${avgFar.toFixed(2)}</b> במשחקים עם פער דירוג גדול. ${upsets > 0 ? `${upsets} הפתעות (נקודות מתחת לקו האפס).` : ''}`;
+  else takeaway = `אין קשר ברור בין פער הדירוג להפרש השערים. ${favWins} ניצחונות לפייבוריט, ${draws} תיקו, ${upsets > 0 ? `ו-${upsets} הפתעות` : 'ואפס הפתעות'} מתוך ${points.length} משחקים.`;
   return `<div class="analysis-card">
     <h3>פער דירוג פיפא מול הפרש שערים <span style="font-family:var(--mono);font-size:0.65em;color:#8a8270;text-transform:none;letter-spacing:0">(לפי דירוג יוני 2026)</span></h3>
     ${renderScatterSvg({points, xMax, yMax, yMin, xLabel:"פער דירוג פיפא בין הנבחרות", yLabel:"הפרש שערים של הקבוצה המדורגת גבוה יותר", diagonal:false})}
@@ -2142,17 +2264,15 @@ function renderRankGapScatter(matches){
   </div>`;
 }
 
-// Renders both scatter charts side by side, with a shared section header.
 function renderScatterCharts(matches){
-  return `<div class="section-title" id="section-scatter"><h2>פיזור — מחציות ודירוג פיפא</h2><div class="rule"></div></div>
-    <div class="scatter-grid">
-      ${renderHalfGoalsScatter(matches)}
-      ${renderRankGapScatter(matches)}
-    </div>`;
+  const titleInner = `<h2>פיזור — מחציות ודירוג פיפא</h2><div class="rule"></div>`;
+  const body = `<div class="scatter-grid">
+    ${renderHalfGoalsScatter(matches)}
+    ${renderRankGapScatter(matches)}
+  </div>`;
+  return accordion("section-scatter", titleInner, body);
 }
 
-// Wires up hover/tooltip behavior for all scatter points currently in the
-// DOM. Called after each render() since the DOM is replaced wholesale.
 function setupScatterTooltips(){
   let tooltip = document.getElementById('scatterTooltip');
   if(!tooltip){
@@ -2161,7 +2281,6 @@ function setupScatterTooltips(){
     tooltip.className = 'scatter-tooltip';
     document.body.appendChild(tooltip);
   }
-
   document.querySelectorAll('.scatter-point').forEach(el => {
     el.addEventListener('mouseenter', () => {
       tooltip.innerHTML = el.getAttribute('data-tooltip');
@@ -2171,7 +2290,6 @@ function setupScatterTooltips(){
       const offset = 14;
       let left = e.clientX + offset;
       let top = e.clientY + offset;
-      // keep the tooltip on-screen near the right/bottom edges
       const maxLeft = window.innerWidth - 260;
       const maxTop = window.innerHeight - 100;
       if(left > maxLeft) left = e.clientX - offset - 240;
@@ -2185,83 +2303,41 @@ function setupScatterTooltips(){
   });
 }
 
+// ─── Pace Comparison ─────────────────────────────────────────────────────────
 
+function matchGoalTotal(m){ return m.score.ft[0] + m.score.ft[1]; }
 
-// Sorts a tournament's played matches into chronological kickoff order.
-// Handles both the 2026-style "HH:MM UTC±N" time strings (via matchUtcDate)
-// and older editions where "time" may be missing/different; falls back to
-// date-only ordering (with a stable tiebreaker) when no parseable time exists.
-function sortPlayedChronologically(matches){
-  const played = matches.filter(m => m.score);
-  return played
-    .map((m, i) => ({m, i, utc: matchUtcDate(m)}))
-    .sort((a, b) => {
-      if(a.utc && b.utc) return a.utc - b.utc || a.i - b.i;
-      if(a.utc) return -1;
-      if(b.utc) return 1;
-      return (a.m.date < b.m.date ? -1 : a.m.date > b.m.date ? 1 : 0) || a.i - b.i;
-    })
-    .map(x => x.m);
-}
-
-// Total goals scored in a single match (both teams combined).
-function matchGoalTotal(m){
-  return m.score.ft[0] + m.score.ft[1];
-}
-
-// Builds the cumulative-goals series for the first `limit` played matches of
-// a tournament (in chronological order): [{matchNum, cumGoals}, ...], plus
-// the resulting average goals/match over that same window.
 function buildPaceSeries(matches, limit){
   const sorted = sortPlayedChronologically(matches);
   const slice = sorted.slice(0, limit);
   let cum = 0;
-  const series = slice.map((m, idx) => {
-    cum += matchGoalTotal(m);
-    return {matchNum: idx + 1, cumGoals: cum};
-  });
+  const series = slice.map((m, idx) => { cum += matchGoalTotal(m); return {matchNum: idx + 1, cumGoals: cum}; });
   const avg = slice.length ? cum / slice.length : 0;
   return {series, avg, played: slice.length, totalGoals: cum};
 }
 
-// Renders the "goal-scoring pace" comparison section: a line chart of
-// cumulative goals across the current tournament's first N played matches
-// vs. the same first-N window of the last 3 editions, plus a summary table
-// of average goals/match "to this point".
 function renderPaceComparison(currentMatches, historicalData){
   const currentPlayed = currentMatches.filter(m => m.score).length;
+  const titleInner = `<h2>קצב כיבוש שערים — מונדיאל 2026 מול 3 הקודמים</h2><div class="rule"></div><span class="count">${currentPlayed} משחקים ראשונים</span>`;
 
   if(currentPlayed === 0){
-    return `<div class="section-title" id="section-pace"><h2>קצב כיבוש שערים — מונדיאל 2026 מול 3 הקודמים</h2><div class="rule"></div></div>
-      <p class="analysis-empty">אין עדיין משחקים שהתקיימו במונדיאל 2026 — ההשוואה תתעדכן עם המשחקים הראשונים</p>`;
+    return accordion("section-pace", titleInner,
+      `<p class="analysis-empty">אין עדיין משחקים שהתקיימו במונדיאל 2026 — ההשוואה תתעדכן עם המשחקים הראשונים</p>`);
   }
 
   const series2026 = buildPaceSeries(currentMatches, currentPlayed);
-
-  const editions = [
-    {year: "2026", label: "2026 (נוכחי)", color: "var(--pitch)", current: true, data: series2026},
-  ];
+  const editions = [{year:"2026", label:"2026 (נוכחי)", color:"var(--pitch)", current:true, data:series2026}];
   [2022, 2018, 2014].forEach(year => {
     const matches = historicalData[year];
     if(!matches) return;
-    editions.push({
-      year: String(year),
-      label: String(year),
-      color: year === 2022 ? "var(--gold)" : year === 2018 ? "var(--red-card)" : "#8a8270",
-      current: false,
-      data: buildPaceSeries(matches, currentPlayed)
-    });
+    editions.push({ year: String(year), label: String(year), color: year === 2022 ? "var(--gold)" : year === 2018 ? "var(--red-card)" : "#8a8270", current: false, data: buildPaceSeries(matches, currentPlayed) });
   });
 
   const chart = renderPaceChart(editions, currentPlayed);
-
-  // summary table: avg goals/match over the first currentPlayed matches
   let rowsHtml = "";
   editions.forEach(e => {
     const diff = e.current ? 0 : series2026.avg - e.data.avg;
-    const diffLabel = e.current
-      ? "—"
-      : (diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2));
+    const diffLabel = e.current ? "—" : (diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2));
     const diffClass = e.current ? "" : diff > 0.05 ? "over" : diff < -0.05 ? "under" : "";
     rowsHtml += `<tr class="${diffClass}">
       <td class="team">${e.label}</td>
@@ -2276,54 +2352,39 @@ function renderPaceComparison(currentMatches, historicalData){
   const slowest = editions.reduce((a, b) => b.data.avg < a.data.avg ? b : a, editions[0]);
   const cur = series2026.avg;
   let takeaway;
-  if(fastest.current){
-    takeaway = `מונדיאל 2026 מוביל בקצב כיבוש השערים מתוך הארבעה, עם <b>${cur.toFixed(2)}</b> שערים למשחק ב-${currentPlayed} המשחקים הראשונים.`;
-  } else if(slowest.current){
-    takeaway = `מונדיאל 2026 הוא האיטי ביותר מבין הארבעה עד כה, עם <b>${cur.toFixed(2)}</b> שערים למשחק ב-${currentPlayed} המשחקים הראשונים — לעומת <b>${fastest.data.avg.toFixed(2)}</b> ב-${fastest.label}.`;
-  } else {
-    takeaway = `מונדיאל 2026 נמצא באמצע, עם <b>${cur.toFixed(2)}</b> שערים למשחק ב-${currentPlayed} המשחקים הראשונים — מול <b>${fastest.data.avg.toFixed(2)}</b> ב-${fastest.label} (הגבוה ביותר) ו-<b>${slowest.data.avg.toFixed(2)}</b> ב-${slowest.label} (הנמוך ביותר).`;
-  }
+  if(fastest.current) takeaway = `מונדיאל 2026 מוביל בקצב כיבוש השערים מתוך הארבעה, עם <b>${cur.toFixed(2)}</b> שערים למשחק ב-${currentPlayed} המשחקים הראשונים.`;
+  else if(slowest.current) takeaway = `מונדיאל 2026 הוא האיטי ביותר מבין הארבעה עד כה, עם <b>${cur.toFixed(2)}</b> שערים למשחק ב-${currentPlayed} המשחקים הראשונים — לעומת <b>${fastest.data.avg.toFixed(2)}</b> ב-${fastest.label}.`;
+  else takeaway = `מונדיאל 2026 נמצא באמצע, עם <b>${cur.toFixed(2)}</b> שערים למשחק ב-${currentPlayed} המשחקים הראשונים — מול <b>${fastest.data.avg.toFixed(2)}</b> ב-${fastest.label} (הגבוה ביותר) ו-<b>${slowest.data.avg.toFixed(2)}</b> ב-${slowest.label} (הנמוך ביותר).`;
 
-  return `<div class="section-title" id="section-pace"><h2>קצב כיבוש שערים — מונדיאל 2026 מול 3 הקודמים</h2><div class="rule"></div><span class="count">${currentPlayed} משחקים ראשונים</span></div>
-    <div class="analysis-card">
-      ${chart}
-      <div class="pace-legend">
-        ${editions.map(e => `<span><i class="swatch" style="background:${e.color}"></i>${e.label}</span>`).join('')}
-      </div>
-      <table class="data-table" style="margin-top:18px">
-        <thead><tr>
-          <th style="text-align:right">מונדיאל</th>
-          <th>משחקים</th>
-          <th>סה״כ שערים</th>
-          <th>שערים למשחק</th>
-          <th>הפרש מ-2026</th>
-        </tr></thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-      <div class="analysis-takeaway">${takeaway}</div>
-    </div>`;
+  const body = `<div class="analysis-card">
+    ${chart}
+    <div class="pace-legend">
+      ${editions.map(e => `<span><i class="swatch" style="background:${e.color}"></i>${e.label}</span>`).join('')}
+    </div>
+    <table class="data-table" style="margin-top:18px">
+      <thead><tr>
+        <th style="text-align:right">מונדיאל</th>
+        <th>משחקים</th>
+        <th>סה״כ שערים</th>
+        <th>שערים למשחק</th>
+        <th>הפרש מ-2026</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <div class="analysis-takeaway">${takeaway}</div>
+  </div>`;
+  return accordion("section-pace", titleInner, body);
 }
 
-// Builds an SVG line chart comparing cumulative goals across editions, all
-// truncated to the same number of matches (so the X axis is "match number"
-// rather than calendar time, making the comparison fair regardless of
-// scheduling differences between editions).
 function renderPaceChart(editions, limit){
   const W = 700, H = 320;
   const padL = 46, padR = 16, padT = 16, padB = 34;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
-
   const maxX = Math.max(1, limit);
-  const maxY = Math.max(1, ...editions.map(e => {
-    const last = e.data.series[e.data.series.length - 1];
-    return last ? last.cumGoals : 0;
-  }));
-
+  const maxY = Math.max(1, ...editions.map(e => { const last = e.data.series[e.data.series.length-1]; return last ? last.cumGoals : 0; }));
   const xFor = matchNum => padL + (matchNum / maxX) * plotW;
   const yFor = cum => padT + plotH - (cum / maxY) * plotH;
-
-  // gridlines: ~5 horizontal lines for goal totals
   const ySteps = 5;
   let gridlines = "", gridLabels = "";
   for(let i = 0; i <= ySteps; i++){
@@ -2332,8 +2393,6 @@ function renderPaceChart(editions, limit){
     gridlines += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e3ddca" stroke-width="1" stroke-dasharray="3,3"/>`;
     gridLabels += `<text x="${padL-8}" y="${y+4}" font-family="monospace" font-size="12" fill="#a89e88" text-anchor="end">${val}</text>`;
   }
-
-  // x-axis labels: a handful of match-number ticks
   let xLabels = "";
   const xTickCount = Math.min(maxX, 6);
   for(let i = 0; i <= xTickCount; i++){
@@ -2341,7 +2400,6 @@ function renderPaceChart(editions, limit){
     if(matchNum === 0) continue;
     xLabels += `<text x="${xFor(matchNum)}" y="${H-padB+20}" font-family="monospace" font-size="12" fill="#a89e88" text-anchor="middle">${matchNum}</text>`;
   }
-
   let paths = "", endLabels = "";
   editions.forEach(e => {
     if(e.data.series.length === 0) return;
@@ -2350,11 +2408,9 @@ function renderPaceChart(editions, limit){
     const strokeWidth = e.current ? 3 : 2;
     const dash = e.current ? "" : 'stroke-dasharray="5,4"';
     paths += `<path d="${d}" fill="none" stroke="${e.color}" stroke-width="${strokeWidth}" ${dash} stroke-linejoin="round"/>`;
-
-    const last = points[points.length - 1];
+    const last = points[points.length-1];
     endLabels += `<circle cx="${last.x}" cy="${last.y}" r="4" fill="${e.color}"/>`;
   });
-
   return `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${gridlines}
     <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="#9a9282" stroke-width="1.2"/>
@@ -2366,27 +2422,17 @@ function renderPaceChart(editions, limit){
   </svg></div>`;
 }
 
-// Builds a unique key for a match (used to index upcomingCalendarMatches),
-// based on kickoff time + team names so it's stable across renders and
-// distinct from any other match.
-function icsKey(team1, team2, kickoffIso){
-  return `${kickoffIso}__${team1}__${team2}`;
-}
+// ─── Calendar ────────────────────────────────────────────────────────────────
 
-// Formats the time remaining until kickoff as "המשחק מתחיל עוד H:MM שעות".
-// Returns null once kickoff has passed (so the caller can hide/clear the element).
+function icsKey(team1, team2, kickoffIso){ return `${kickoffIso}__${team1}__${team2}`; }
 function formatCountdown(kickoffUtc, now){
   const diffMs = kickoffUtc.getTime() - now.getTime();
   if(diffMs <= 0) return null;
   const totalMinutes = Math.floor(diffMs / 60000);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  const mm = String(minutes).padStart(2, "0");
-  return `המשחק מתחיל עוד ${hours}:${mm} שעות`;
+  return `המשחק מתחיל עוד ${hours}:${String(minutes).padStart(2,"0")} שעות`;
 }
-
-// Updates all .upcoming-countdown elements currently in the DOM based on
-// their data-kickoff attribute. Called on render and on a recurring timer.
 function updateCountdowns(){
   const now = new Date();
   document.querySelectorAll('.upcoming-countdown[data-kickoff]').forEach(el => {
@@ -2395,126 +2441,69 @@ function updateCountdowns(){
     el.textContent = label || "";
   });
 }
-
-// Escapes text for safe inclusion in an ICS file (commas, semicolons, etc.)
-function icsEscape(str){
-  return String(str)
-    .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,")
-    .replace(/\n/g, "\\n");
-}
-
-// Formats a Date as UTC in ICS format: YYYYMMDDTHHMMSSZ
-function icsDate(d){
-  return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-}
-
-// Builds an ICS (iCalendar) file content for a single match and triggers a download.
+function icsEscape(str){ return String(str).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+function icsDate(d){ return d.toISOString().replace(/[-:]/g,"").split(".")[0]+"Z"; }
 function downloadMatchIcs(matchInfo){
-
   const start = new Date(matchInfo.kickoffUtc);
-  const end = new Date(start.getTime() + 2 * 3600 * 1000); // assume ~2h duration
+  const end = new Date(start.getTime() + 2 * 3600 * 1000);
   const title = `${matchInfo.team1} – ${matchInfo.team2} (מונדיאל 2026)`;
   const location = matchInfo.ground || "";
   const description = `${matchInfo.round}${matchInfo.ground ? ' · ' + matchInfo.ground : ''}`;
-  const uid = `wc2026-${start.getTime()}-${matchInfo.team1}-${matchInfo.team2}`.replace(/\s+/g, '');
-
-  const ics = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Mundial 2026 Dashboard//HE",
-    "CALSCALE:GREGORIAN",
-    "BEGIN:VEVENT",
-    `UID:${icsEscape(uid)}`,
-    `DTSTAMP:${icsDate(new Date())}`,
-    `DTSTART:${icsDate(start)}`,
-    `DTEND:${icsDate(end)}`,
-    `SUMMARY:${icsEscape(title)}`,
-    `DESCRIPTION:${icsEscape(description)}`,
-    location ? `LOCATION:${icsEscape(location)}` : null,
-    "END:VEVENT",
-    "END:VCALENDAR"
-  ].filter(Boolean).join("\r\n");
-
-  const blob = new Blob([ics], {type: "text/calendar;charset=utf-8"});
+  const uid = `wc2026-${start.getTime()}-${matchInfo.team1}-${matchInfo.team2}`.replace(/\s+/g,'');
+  const ics = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Mundial 2026 Dashboard//HE","CALSCALE:GREGORIAN","BEGIN:VEVENT",`UID:${icsEscape(uid)}`,`DTSTAMP:${icsDate(new Date())}`,`DTSTART:${icsDate(start)}`,`DTEND:${icsDate(end)}`,`SUMMARY:${icsEscape(title)}`,`DESCRIPTION:${icsEscape(description)}`,location?`LOCATION:${icsEscape(location)}`:null,"END:VEVENT","END:VCALENDAR"].filter(Boolean).join("\r\n");
+  const blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = `${matchInfo.team1}-vs-${matchInfo.team2}.ics`.replace(/\s+/g, '_');
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = `${matchInfo.team1}-vs-${matchInfo.team2}.ics`.replace(/\s+/g,'_');
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
 }
+
+// ─── Upcoming Matches ─────────────────────────────────────────────────────────
 
 function renderUpcomingMatches(matches){
   const now = new Date();
   upcomingCalendarMatches = {};
-  const withIsrael = matches
-    .map(m => ({...m, _il: matchIsraelTime(m)}))
-    .filter(m => m._il && !m.score);
-
-  const live = withIsrael
-    .filter(m => m._il.utc.getTime() <= now.getTime())
-    .sort((a,b) => a._il.utc - b._il.utc);
-
-  const upcoming = withIsrael
-    .filter(m => m._il.utc.getTime() > now.getTime())
-    .sort((a,b) => a._il.utc - b._il.utc);
-
-  // show all live matches, then fill remaining slots (up to 4 total) with upcoming
+  const withIsrael = matches.map(m => ({...m, _il: matchIsraelTime(m)})).filter(m => m._il && !m.score);
+  const live = withIsrael.filter(m => m._il.utc.getTime() <= now.getTime()).sort((a,b) => a._il.utc - b._il.utc);
+  const upcoming = withIsrael.filter(m => m._il.utc.getTime() > now.getTime()).sort((a,b) => a._il.utc - b._il.utc);
   const slotsLeft = Math.max(0, 4 - live.length);
   const toShow = [...live, ...upcoming.slice(0, slotsLeft)];
 
+  const titleInner = `<h2>המשחקים הבאים <span style="font-family:var(--mono);font-size:0.65em;color:#8a8270;text-transform:none;letter-spacing:0">(שעון ישראל)</span></h2><div class="rule"></div>`;
+
   if(toShow.length === 0){
-    return `<div class="section-title" id="section-upcoming"><h2>המשחקים הבאים <span style="font-family:var(--mono);font-size:0.65em;color:#8a8270;text-transform:none;letter-spacing:0">(שעון ישראל)</span></h2><div class="rule"></div></div>
-      <p class="analysis-empty">אין משחקים עתידיים ידועים כרגע</p>`;
+    return accordion("section-upcoming", titleInner, `<p class="analysis-empty">אין משחקים עתידיים ידועים כרגע</p>`);
   }
 
   const days = ["יום א'","יום ב'","יום ג'","יום ד'","יום ה'","יום ו'","שבת"];
   const months = ["ינו","פבר","מרץ","אפר","מאי","יונ","יול","אוג","ספט","אוק","נוב","דצמ"];
 
-  let html = `<div class="section-title" id="section-upcoming"><h2>המשחקים הבאים <span style="font-family:var(--mono);font-size:0.65em;color:#8a8270;text-transform:none;letter-spacing:0">(שעון ישראל)</span></h2><div class="rule"></div></div>`;
-  html += `<div class="upcoming-grid">`;
+  let body = `<div class="upcoming-grid">`;
   toShow.forEach((m, i) => {
     const [y, mo, d] = m._il.dateStr.split("-").map(Number);
     const dateObj = new Date(Date.UTC(y, mo - 1, d));
     const whenLabel = `${days[dateObj.getUTCDay()]} ${dateObj.getUTCDate()} ${months[dateObj.getUTCMonth()]}`;
     const roundLabel = m.round.startsWith("Matchday") ? (m.group ? m.group.replace('Group ','בית ') : m.round) : m.round;
-
     const isLive = m._il.utc.getTime() <= now.getTime();
     const hoursSinceKickoff = isLive ? (now.getTime() - m._il.utc.getTime()) / 3600000 : 0;
     let cardClass = "upcoming-card";
     let badge = "";
     if(isLive){
       cardClass += " live-now";
-      if(hoursSinceKickoff <= 3){
-        badge = `<div class="upcoming-when live-tag">מתקיים כרגע</div>`;
-      } else {
-        badge = `<div class="upcoming-when live-tag no-pulse">ממתין לתוצאה</div>`;
-      }
+      badge = hoursSinceKickoff <= 3
+        ? `<div class="upcoming-when live-tag">מתקיים כרגע</div>`
+        : `<div class="upcoming-when live-tag no-pulse">ממתין לתוצאה</div>`;
     } else {
       cardClass += i === live.length ? " next" : "";
       badge = `<div class="upcoming-when">${whenLabel}</div>`;
     }
-
-    const countdownHtml = isLive
-      ? ""
-      : `<div class="upcoming-countdown" data-kickoff="${m._il.utc.toISOString()}"></div>`;
-
-    const calendarBtn = isLive
-      ? ""
-      : `<div class="upcoming-actions">
-          <button class="add-to-calendar" data-ics-key="${icsKey(m.team1, m.team2, m._il.utc.toISOString())}">📅 הוסף ליומן</button>
-        </div>`;
-
+    const countdownHtml = isLive ? "" : `<div class="upcoming-countdown" data-kickoff="${m._il.utc.toISOString()}"></div>`;
+    const calendarBtn = isLive ? "" : `<div class="upcoming-actions"><button class="add-to-calendar" data-ics-key="${icsKey(m.team1, m.team2, m._il.utc.toISOString())}">📅 הוסף ליומן</button></div>`;
     const homeFifa = FIFA_RANKING[m.team1];
     const awayFifa = FIFA_RANKING[m.team2];
     const homeRankBadge = homeFifa ? `<span class="fifa-rank" title="דירוג פיפא (יוני 2026)">#${homeFifa}</span>` : "";
     const awayRankBadge = awayFifa ? `<span class="fifa-rank" title="דירוג פיפא (יוני 2026)" style="margin-right:0;margin-left:6px">#${awayFifa}</span>` : "";
-
-    html += `<div class="${cardClass}">
+    body += `<div class="${cardClass}">
       ${badge}
       <div class="upcoming-time">${m._il.timeStr}</div>
       <div class="upcoming-teams">${m.team1}${homeRankBadge} – ${awayRankBadge}${m.team2}</div>
@@ -2522,67 +2511,151 @@ function renderUpcomingMatches(matches){
       ${countdownHtml}
       ${calendarBtn}
     </div>`;
-
     if(!isLive){
       const key = icsKey(m.team1, m.team2, m._il.utc.toISOString());
-      upcomingCalendarMatches[key] = {
-        team1: m.team1, team2: m.team2,
-        ground: m.ground || '', round: roundLabel,
-        kickoffUtc: m._il.utc.toISOString()
-      };
+      upcomingCalendarMatches[key] = { team1: m.team1, team2: m.team2, ground: m.ground || '', round: roundLabel, kickoffUtc: m._il.utc.toISOString() };
     }
   });
-  html += `</div>`;
-  return html;
+  body += `</div>`;
+  return accordion("section-upcoming", titleInner, body);
 }
+
+// ─── Top Stats ───────────────────────────────────────────────────────────────
 
 function renderTopStats(matches, scorers, teamFilter){
   const played = matches.filter(m => m.score);
   const goals = played.reduce((s,m) => s + m.score.ft[0]+m.score.ft[1], 0);
   const avgGoals = played.length ? (goals/played.length).toFixed(2) : "0";
   const topScorer = scorers[0];
-
   const matchesLabel = teamFilter ? "משחקי הנבחרת" : "משחקים בטורניר";
-  const playedLabel = teamFilter ? "משחקים שהתקיימו" : "משחקים שהתקיימו";
-  const goalsLabel = teamFilter ? "סה״כ שערים (כולל יריבות)" : "סה״כ שערים";
-  const avgLabel = teamFilter ? "שערים למשחק (ממוצע)" : "שערים למשחק (ממוצע)";
   const scorerLabel = topScorer
     ? (teamFilter ? `${topScorer.count} שערים — מבקיע מוביל בנבחרה` : `${topScorer.count} שערים — מבקיע מוביל`)
     : (teamFilter ? "אין עדיין מבקיעים לנבחרת" : "אין עדיין מבקיעים");
-
   return `<div class="stat-grid">
     <div class="stat-card accent"><div class="num">${matches.length}</div><div class="lbl">${matchesLabel}</div></div>
-    <div class="stat-card accent"><div class="num">${played.length}</div><div class="lbl">${playedLabel}</div></div>
-    <div class="stat-card gold"><div class="num">${goals}</div><div class="lbl">${goalsLabel}</div></div>
-    <div class="stat-card gold"><div class="num">${avgGoals}</div><div class="lbl">${avgLabel}</div></div>
+    <div class="stat-card accent"><div class="num">${played.length}</div><div class="lbl">משחקים שהתקיימו</div></div>
+    <div class="stat-card gold"><div class="num">${goals}</div><div class="lbl">סה״כ שערים</div></div>
+    <div class="stat-card gold"><div class="num">${avgGoals}</div><div class="lbl">שערים למשחק (ממוצע)</div></div>
     <div class="stat-card"><div class="num" style="font-size:1.3rem">${topScorer ? topScorer.name : "—"}</div><div class="lbl">${scorerLabel}</div></div>
   </div>`;
 }
 
+// ─── Confederations ───────────────────────────────────────────────────────────
+
+const CONFEDERATION_MAP = {
+  "Argentina":"CONMEBOL","Brazil":"CONMEBOL","Colombia":"CONMEBOL",
+  "Uruguay":"CONMEBOL","Ecuador":"CONMEBOL","Paraguay":"CONMEBOL",
+  "Spain":"UEFA","France":"UEFA","England":"UEFA","Portugal":"UEFA",
+  "Netherlands":"UEFA","Belgium":"UEFA","Germany":"UEFA","Croatia":"UEFA",
+  "Switzerland":"UEFA","Turkey":"UEFA","Austria":"UEFA","Norway":"UEFA",
+  "Sweden":"UEFA","Czech Republic":"UEFA","Scotland":"UEFA","Bosnia & Herzegovina":"UEFA",
+  "Morocco":"CAF","Senegal":"CAF","Algeria":"CAF","Egypt":"CAF",
+  "Ivory Coast":"CAF","Tunisia":"CAF","South Africa":"CAF","Cape Verde":"CAF","Ghana":"CAF","DR Congo":"CAF",
+  "USA":"CONCACAF","Mexico":"CONCACAF","Canada":"CONCACAF","Panama":"CONCACAF","Haiti":"CONCACAF","Curaçao":"CONCACAF",
+  "Japan":"AFC","Iran":"AFC","South Korea":"AFC","Australia":"AFC","Uzbekistan":"AFC","Qatar":"AFC","Iraq":"AFC","Saudi Arabia":"AFC","Jordan":"AFC",
+  "New Zealand":"OFC"
+};
+const CONFEDERATION_META = {
+  "UEFA":     { label:"אירופה",         labelEn:"UEFA",     teams:16 },
+  "CAF":      { label:"אפריקה",         labelEn:"CAF",      teams:10 },
+  "AFC":      { label:"אסיה",           labelEn:"AFC",      teams:9  },
+  "CONCACAF": { label:"CONCACAF",       labelEn:"CONCACAF", teams:6  },
+  "CONMEBOL": { label:"אמריקה דרומית", labelEn:"CONMEBOL", teams:6  },
+  "OFC":      { label:"אוקיאניה",       labelEn:"OFC",      teams:1  },
+};
+const CONF_ORDER = ["UEFA","CAF","AFC","CONCACAF","CONMEBOL","OFC"];
+
+function buildConfederationStats(matches){
+  const stats = {};
+  CONF_ORDER.forEach(c => { stats[c] = { played:0, wins:0, draws:0, losses:0, gf:0, ga:0, pts:0 }; });
+  matches.filter(m => m.score).forEach(m => {
+    const c1 = CONFEDERATION_MAP[m.team1], c2 = CONFEDERATION_MAP[m.team2];
+    const [hs, as] = m.score.ft;
+    [{conf:c1, gf:hs, ga:as, win:hs>as, draw:hs===as},{conf:c2, gf:as, ga:hs, win:as>hs, draw:hs===as}].forEach(({conf, gf, ga, win, draw}) => {
+      if(!conf || !stats[conf]) return;
+      const s = stats[conf];
+      s.played++; s.gf += gf; s.ga += ga;
+      if(win){ s.wins++; s.pts += 3; } else if(draw){ s.draws++; s.pts += 1; } else { s.losses++; }
+    });
+  });
+  return stats;
+}
+
+function renderConfederations(matches){
+  const titleInner = `<h2>ביצועים לפי יבשת / קונפדרציה</h2><div class="rule"></div>`;
+
+  if(!matches.some(m => m.score)){
+    return accordion("section-confederations", titleInner,
+      `<p class="analysis-empty">אין עדיין משחקים שהתקיימו — הניתוח יתעדכן עם המשחקים הראשונים</p>`);
+  }
+
+  const stats = buildConfederationStats(matches);
+  const sorted = [...CONF_ORDER].sort((a,b) => {
+    const sa = stats[a], sb = stats[b];
+    return (sb.pts - sa.pts) || ((sb.gf-sb.ga)-(sa.gf-sa.ga)) || (sb.gf-sa.gf);
+  });
+  const totalMatches = CONF_ORDER.reduce((s,c) => s + stats[c].played, 0) / 2;
+  const totalGoals   = CONF_ORDER.reduce((s,c) => s + stats[c].gf, 0) / 2;
+
+  let rows = "";
+  sorted.forEach((c, i) => {
+    const s = stats[c];
+    const meta = CONFEDERATION_META[c];
+    const gd = s.gf - s.ga;
+    const gdLabel = gd > 0 ? `+${gd}` : `${gd}`;
+    const gdClass = gd > 0 ? "conf-gd-pos" : gd < 0 ? "conf-gd-neg" : "conf-gd-zero";
+    rows += `<tr>
+      <td style="text-align:center;font-family:var(--mono);color:#8a8270;font-size:0.78rem">${i+1}</td>
+      <td class="conf-name">${meta.label}<br><span style="font-family:var(--mono);font-size:0.68rem;color:#8a8270;font-weight:400">${meta.labelEn} · ${meta.teams} נבחרות</span></td>
+      <td>${s.played}</td>
+      <td style="color:var(--pitch);font-weight:600">${s.wins}</td>
+      <td style="color:#8a8270">${s.draws}</td>
+      <td style="color:var(--red-card)">${s.losses}</td>
+      <td style="font-family:var(--mono)">${s.gf}</td>
+      <td style="font-family:var(--mono)">${s.ga}</td>
+      <td class="${gdClass}">${gdLabel}</td>
+      <td class="conf-pts">${s.pts}</td>
+    </tr>`;
+  });
+
+  const body = `<div class="conf-table-wrap">
+    <table class="conf-table">
+      <thead><tr>
+        <th>#</th>
+        <th style="text-align:right">קונפדרציה</th>
+        <th>משחקים</th><th>נ</th><th>ש</th><th>ה</th>
+        <th>כבשו</th><th>ספגו</th><th>הפרש</th><th>נק׳</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>
+  <div style="font-family:var(--mono);font-size:0.72rem;color:#8a8270;margin-top:12px">
+    כל נבחרת מחושבת לפי קונפדרציית השתייכותה · ${totalMatches} משחקים שהתקיימו · ${totalGoals} שערים סה״כ ·
+    ניצחון = 3 נק׳, תיקו = 1 נק׳, הפסד = 0 נק׳
+  </div>`;
+  return accordion("section-confederations", titleInner, body);
+}
+
+// ─── Main render ─────────────────────────────────────────────────────────────
+
 let allMatches = [];
 let selectedTeam = null;
 let upcomingCalendarMatches = {};
-let historicalData = {}; // {2022: matches[], 2018: matches[], 2014: matches[]}
+let historicalData = {};
 
 function getTeamList(matches){
   const names = new Set();
-  matches.forEach(m => {
-    [m.team1, m.team2].forEach(t => {
-      if(t && !/^\d/.test(t)) names.add(t);
-    });
-  });
+  matches.forEach(m => { [m.team1, m.team2].forEach(t => { if(t && !/^\d/.test(t)) names.add(t); }); });
   return [...names].sort((a,b) => a.localeCompare(b));
 }
 
 function render(matches, teamFilter){
-  const standings = buildStandings(matches); // always from full data, for correct group tables
+  const standings = buildStandings(matches);
   const filteredMatches = teamFilter
     ? matches.filter(m => m.team1 === teamFilter || m.team2 === teamFilter)
     : matches;
-
   const scorersAll = buildScorers(matches);
   const scorers = teamFilter ? scorersAll.filter(s => s.team === teamFilter) : scorersAll;
-
   let standingsToShow = standings;
   if(teamFilter){
     const group = Object.entries(standings).find(([g, teams]) => teams.some(t => t.team === teamFilter));
@@ -2600,11 +2673,13 @@ function render(matches, teamFilter){
   }
 
   html += renderTopStats(filteredMatches, scorers, teamFilter);
+  html += renderRecentMatches(filteredMatches);
   html += renderUpcomingMatches(filteredMatches);
   html += renderStandings(standingsToShow);
   if(teamFilter && scorers.length === 0){
-    html += `<div class="section-title" id="section-scorers"><h2>מבקיעים</h2><div class="rule"></div></div>
-      <p class="analysis-empty">${teamFilter} עדיין לא הבקיעה שערים בטורניר</p>`;
+    const titleInner = `<h2>מבקיעים</h2><div class="rule"></div>`;
+    html += accordion("section-scorers", titleInner,
+      `<p class="analysis-empty">${teamFilter} עדיין לא הבקיעה שערים בטורניר</p>`);
   } else {
     html += renderScorers(scorers);
   }
@@ -2618,6 +2693,9 @@ function render(matches, teamFilter){
   html += renderConfederations(matches);
 
   document.getElementById('content').innerHTML = html;
+
+  // Wire up accordion after DOM update
+  setupAccordion();
 
   const bannerClear = document.getElementById('bannerClear');
   if(bannerClear) bannerClear.addEventListener('click', () => setTeamFilter(null));
@@ -2646,20 +2724,14 @@ function setupTeamSearch(matches){
   const teams = getTeamList(matches);
   const datalist = document.getElementById('teamList');
   datalist.innerHTML = teams.map(t => `<option value="${t}"></option>`).join('');
-
   const input = document.getElementById('teamSearch');
   const clearBtn = document.getElementById('clearTeamSearch');
-
   input.addEventListener('input', () => {
     const val = input.value.trim();
     const match = teams.find(t => t.toLowerCase() === val.toLowerCase());
-    if(match){
-      setTeamFilter(match);
-    } else if(val === ""){
-      setTeamFilter(null);
-    }
+    if(match) setTeamFilter(match);
+    else if(val === "") setTeamFilter(null);
   });
-
   input.addEventListener('keydown', (e) => {
     if(e.key === "Enter"){
       const val = input.value.trim();
@@ -2668,13 +2740,9 @@ function setupTeamSearch(matches){
       if(match) setTeamFilter(match);
     }
   });
-
   clearBtn.addEventListener('click', () => setTeamFilter(null));
 }
 
-// Fetches a single historical tournament's match data. Returns null on
-// failure (e.g. file missing or network error) so the pace comparison can
-// gracefully skip that edition without breaking the whole dashboard.
 async function fetchHistorical(year, url){
   try{
     const res = await fetch(url);
@@ -2693,7 +2761,6 @@ async function loadDashboard(){
     if(!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
     allMatches = data.matches;
-
     setupTeamSearch(allMatches);
     render(allMatches, selectedTeam);
   } catch(err){
@@ -2701,152 +2768,19 @@ async function loadDashboard(){
     document.getElementById('statusRow').innerHTML = `<span class="status-pill" style="border-color:var(--red-card); color:#ffd9cf">שגיאת טעינה</span>`;
     return;
   }
-
-  // Load historical editions in parallel (best-effort) and re-render once
-  // available, so the main dashboard isn't blocked/delayed by these extra
-  // requests.
   try{
     const results = await Promise.all(
       Object.entries(HISTORICAL_DATA_URLS).map(([year, url]) => fetchHistorical(year, url))
     );
-    results.forEach(({year, matches}) => {
-      if(matches) historicalData[year] = matches;
-    });
+    results.forEach(({year, matches}) => { if(matches) historicalData[year] = matches; });
     render(allMatches, selectedTeam);
   } catch(err){
     console.warn("שגיאה בטעינת נתוני מונדיאלים קודמים:", err);
   }
 }
 
-// ---------- CONFEDERATION ANALYSIS ----------
-
-const CONFEDERATION_MAP = {
-  "Argentina":"CONMEBOL","Brazil":"CONMEBOL","Colombia":"CONMEBOL",
-  "Uruguay":"CONMEBOL","Ecuador":"CONMEBOL","Paraguay":"CONMEBOL",
-  "Spain":"UEFA","France":"UEFA","England":"UEFA","Portugal":"UEFA",
-  "Netherlands":"UEFA","Belgium":"UEFA","Germany":"UEFA","Croatia":"UEFA",
-  "Switzerland":"UEFA","Turkey":"UEFA","Austria":"UEFA","Norway":"UEFA",
-  "Sweden":"UEFA","Czech Republic":"UEFA","Scotland":"UEFA",
-  "Bosnia & Herzegovina":"UEFA",
-  "Morocco":"CAF","Senegal":"CAF","Algeria":"CAF","Egypt":"CAF",
-  "Ivory Coast":"CAF","Tunisia":"CAF","South Africa":"CAF",
-  "Cape Verde":"CAF","Ghana":"CAF","DR Congo":"CAF",
-  "USA":"CONCACAF","Mexico":"CONCACAF","Canada":"CONCACAF",
-  "Panama":"CONCACAF","Haiti":"CONCACAF","Curaçao":"CONCACAF",
-  "Japan":"AFC","Iran":"AFC","South Korea":"AFC","Australia":"AFC",
-  "Uzbekistan":"AFC","Qatar":"AFC","Iraq":"AFC",
-  "Saudi Arabia":"AFC","Jordan":"AFC",
-  "New Zealand":"OFC"
-};
-
-const CONFEDERATION_META = {
-  "UEFA":     { label:"אירופה",         labelEn:"UEFA",     teams:16 },
-  "CAF":      { label:"אפריקה",         labelEn:"CAF",      teams:10 },
-  "AFC":      { label:"אסיה",           labelEn:"AFC",      teams:9  },
-  "CONCACAF": { label:"CONCACAF",       labelEn:"CONCACAF", teams:6  },
-  "CONMEBOL": { label:"אמריקה דרומית", labelEn:"CONMEBOL", teams:6  },
-  "OFC":      { label:"אוקיאניה",       labelEn:"OFC",      teams:1  },
-};
-
-const CONF_ORDER = ["UEFA","CAF","AFC","CONCACAF","CONMEBOL","OFC"];
-
-function buildConfederationStats(matches){
-  const stats = {};
-  CONF_ORDER.forEach(c => {
-    stats[c] = { played:0, wins:0, draws:0, losses:0, gf:0, ga:0, pts:0 };
-  });
-
-  matches.filter(m => m.score).forEach(m => {
-    const c1 = CONFEDERATION_MAP[m.team1];
-    const c2 = CONFEDERATION_MAP[m.team2];
-    const [hs, as] = m.score.ft;
-
-    [{conf:c1, gf:hs, ga:as, win:hs>as, draw:hs===as},
-     {conf:c2, gf:as, ga:hs, win:as>hs, draw:hs===as}
-    ].forEach(({conf, gf, ga, win, draw}) => {
-      if(!conf || !stats[conf]) return;
-      const s = stats[conf];
-      s.played++; s.gf += gf; s.ga += ga;
-      if(win){ s.wins++; s.pts += 3; }
-      else if(draw){ s.draws++; s.pts += 1; }
-      else { s.losses++; }
-    });
-  });
-
-  return stats;
-}
-
-function renderConfederations(matches){
-  const hdr = `<div class="section-title" id="section-confederations"><h2>ביצועים לפי יבשת / קונפדרציה</h2><div class="rule"></div></div>`;
-
-  if(!matches.some(m => m.score)){
-    return hdr + `<p class="analysis-empty">אין עדיין משחקים שהתקיימו — הניתוח יתעדכן עם המשחקים הראשונים</p>`;
-  }
-
-  const stats = buildConfederationStats(matches);
-
-  // Sort by pts desc, then gd desc, then gf desc
-  const sorted = [...CONF_ORDER].sort((a,b) => {
-    const sa = stats[a], sb = stats[b];
-    return (sb.pts - sa.pts) || ((sb.gf-sb.ga)-(sa.gf-sa.ga)) || (sb.gf-sa.gf);
-  });
-
-  const totalMatches = CONF_ORDER.reduce((s,c) => s + stats[c].played, 0) / 2;
-  const totalGoals   = CONF_ORDER.reduce((s,c) => s + stats[c].gf, 0) / 2;
-
-  let rows = "";
-  sorted.forEach((c, i) => {
-    const s = stats[c];
-    const meta = CONFEDERATION_META[c];
-    const gd = s.gf - s.ga;
-    const gdLabel = gd > 0 ? `+${gd}` : `${gd}`;
-    const gdClass = gd > 0 ? "conf-gd-pos" : gd < 0 ? "conf-gd-neg" : "conf-gd-zero";
-
-    rows += `<tr>
-      <td style="text-align:center;font-family:var(--mono);color:#8a8270;font-size:0.78rem">${i+1}</td>
-      <td class="conf-name">${meta.label}<br><span style="font-family:var(--mono);font-size:0.68rem;color:#8a8270;font-weight:400">${meta.labelEn} · ${meta.teams} נבחרות</span></td>
-      <td>${s.played}</td>
-      <td style="color:var(--pitch);font-weight:600">${s.wins}</td>
-      <td style="color:#8a8270">${s.draws}</td>
-      <td style="color:var(--red-card)">${s.losses}</td>
-      <td style="font-family:var(--mono)">${s.gf}</td>
-      <td style="font-family:var(--mono)">${s.ga}</td>
-      <td class="${gdClass}">${gdLabel}</td>
-      <td class="conf-pts">${s.pts}</td>
-    </tr>`;
-  });
-
-  const note = `<div style="font-family:var(--mono);font-size:0.72rem;color:#8a8270;margin-top:12px">
-    כל נבחרת מחושבת לפי קונפדרציית השתייכותה · ${totalMatches} משחקים שהתקיימו · ${totalGoals} שערים סה״כ ·
-    ניצחון = 3 נק׳, תיקו = 1 נק׳, הפסד = 0 נק׳
-  </div>`;
-
-  return `${hdr}
-    <div class="conf-table-wrap">
-      <table class="conf-table">
-        <thead><tr>
-          <th>#</th>
-          <th style="text-align:right">קונפדרציה</th>
-          <th>משחקים</th>
-          <th>נ</th>
-          <th>ש</th>
-          <th>ה</th>
-          <th>כבשו</th>
-          <th>ספגו</th>
-          <th>הפרש</th>
-          <th>נק׳</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-    ${note}`;
-}
-
 loadDashboard();
-
-// Keep the "המשחק מתחיל עוד..." countdowns ticking without a full re-render.
 setInterval(updateCountdowns, 30000);
-
 </script>
 
 </body>
