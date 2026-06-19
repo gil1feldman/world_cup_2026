@@ -469,6 +469,19 @@
     vertical-align:1px;
     letter-spacing:0;
   }
+  .qualified-badge{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:0.62rem;
+    font-weight:700;
+    color:#fffdf7;
+    background:var(--pitch);
+    border-radius:2px;
+    padding:1px 5px;
+    margin-left:6px;
+    vertical-align:1px;
+    letter-spacing:0;
+  }
   table.standings td.pts{
     font-family:var(--mono);
     font-weight:700;
@@ -1479,6 +1492,29 @@ function buildStandings(matches){
   return result;
 }
 
+// Returns a Set of team names that have mathematically secured progression
+// to the next round: exactly 2 of the (3) group matches have been played by
+// every team in the group, and the team's points lead over the team in 3rd
+// place is 4 or more. With only 1 match left per team (max 3 points to gain),
+// a 4-point cushion over 3rd place cannot be closed, so the team is locked
+// into one of the top two spots regardless of all remaining results.
+// Points-only rule (goal difference is intentionally not factored in).
+function computeQualifiedTeams(standings){
+  const qualified = new Set();
+  for(const teams of Object.values(standings)){
+    if(teams.length < 3) continue;
+    // Rule only applies once every team in the group has played exactly 2
+    // matches (i.e. before anyone's 3rd/final group match has been played).
+    const allPlayedExactlyTwo = teams.every(t => t.played === 2);
+    if(!allPlayedExactlyTwo) continue;
+    const thirdPlacePts = teams[2].pts;
+    teams.forEach(t => {
+      if(t.pts - thirdPlacePts >= 4) qualified.add(t.team);
+    });
+  }
+  return qualified;
+}
+
 function buildScorers(matches){
   const scorers = {};
   matches.forEach(m => {
@@ -1604,6 +1640,7 @@ function parseGoalMinuteSimple(minuteStr){
 // ─── Standings ────────────────────────────────────────────────────────────────
 
 function renderStandings(standings){
+  const qualifiedTeams = computeQualifiedTeams(standings);
   const titleInner = `<h2>מיקומי בתים</h2><div class="rule"></div><span class="count">${Object.keys(standings).length} בתים</span>`;
   let body = `<div class="groups-grid">`;
   for(const [group, teams] of Object.entries(standings)){
@@ -1613,8 +1650,11 @@ function renderStandings(standings){
         <thead><tr><th style="text-align:right">קבוצה</th><th>מ</th><th>נ</th><th>ש</th><th>ה</th><th>שה:נג</th><th>נק</th></tr></thead>
         <tbody>`;
     teams.forEach((t, i) => {
+      const qualifiedBadge = qualifiedTeams.has(t.team)
+        ? `<span class="qualified-badge" title="הבטיחה מתמטית מעבר לשלב הבא">✓ עלתה</span>`
+        : "";
       body += `<tr class="${i < 2 ? 'qualify' : ''}">
-        <td class="team">${t.team}</td>
+        <td class="team">${t.team}${qualifiedBadge}</td>
         <td>${t.played}</td>
         <td>${t.win}</td>
         <td>${t.draw}</td>
