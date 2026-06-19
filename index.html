@@ -1276,6 +1276,87 @@
     background:#fffdf7;
     overflow-x:auto;
   }
+
+  /* ---------- TRAVEL DISTANCE TRACKER ---------- */
+  .travel-map-wrap{
+    border:2px solid var(--ink);
+    background:#fffdf7;
+    padding:14px 14px 10px;
+    margin-bottom:16px;
+    position:relative;
+  }
+  .travel-map-wrap svg{
+    display:block;
+    width:100%;
+    height:auto;
+  }
+  .travel-map-hint{
+    text-align:center;
+    font-family:var(--mono);
+    font-size:0.74rem;
+    color:#8a8270;
+    margin:8px 0 2px;
+  }
+  .travel-table-wrap{
+    border:2px solid var(--ink);
+    background:#fffdf7;
+    overflow-x:auto;
+  }
+  table.travel-table td.team{
+    text-align:right;
+    font-weight:600;
+  }
+  table.travel-table tr.travel-table-row{
+    cursor:pointer;
+    transition:background 0.12s ease;
+  }
+  table.travel-table tr.travel-table-row:hover td{
+    background:#faf3e2;
+  }
+  table.travel-table tr.travel-table-row.selected td{
+    background:rgba(217,164,65,0.18);
+  }
+  table.travel-table tr.travel-table-row.selected td.team{
+    color:var(--pitch);
+  }
+  table.travel-table td.diff{
+    font-family:var(--mono);
+    font-weight:700;
+  }
+  table.travel-table td.diff.pos{ color:var(--pitch); }
+  table.travel-table td.diff.neg{ color:var(--red-card); }
+  .travel-km-cell{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:140px;
+  }
+  .travel-km-bar-track{
+    flex:1;
+    height:10px;
+    background:#ece6d4;
+    border-radius:2px;
+    overflow:hidden;
+  }
+  .travel-km-bar-fill{
+    display:block;
+    height:100%;
+    background:var(--red-card);
+    border-radius:2px;
+    transition:width 0.4s ease;
+  }
+  .travel-km-val{
+    font-family:var(--mono);
+    font-size:0.78rem;
+    color:#4a473d;
+    min-width:48px;
+    text-align:left;
+  }
+  @media (max-width:600px){
+    table.travel-table{ font-size:0.74rem; }
+    table.travel-table th, table.travel-table td{ padding:6px 4px; }
+    .travel-km-cell{ min-width:90px; }
+  }
 </style>
 </head>
 <body>
@@ -1307,6 +1388,7 @@
     <a href="#section-results">ניתוח תוצאות</a>
     <a href="#section-upsets">הפתעות</a>
     <a href="#section-comebacks">מהפכים</a>
+    <a href="#section-travel">מרחקי נסיעה</a>
     <a href="#section-matches">לוח משחקים</a>
     <a href="#section-scatter">פיזור</a>
     <a href="#section-pace">קצב שערים</a>
@@ -2676,6 +2758,253 @@ function renderConfederations(matches){
   return accordion("section-confederations", titleInner, body);
 }
 
+// ─── Travel Distance Tracker ──────────────────────────────────────────────────
+
+const CITY_COORDS = {
+  "Atlanta": [33.7550, -84.4006],
+  "Boston (Foxborough)": [42.0918, -71.2643],
+  "Dallas (Arlington)": [32.7473, -97.0945],
+  "Guadalajara (Zapopan)": [20.6839, -103.4220],
+  "Houston": [29.6847, -95.4107],
+  "Kansas City": [39.0489, -94.4839],
+  "Los Angeles (Inglewood)": [33.9534, -118.3387],
+  "Mexico City": [19.3029, -99.1505],
+  "Miami (Miami Gardens)": [25.9580, -80.2389],
+  "Monterrey (Guadalupe)": [25.7178, -100.2434],
+  "New York/New Jersey (East Rutherford)": [40.8135, -74.0745],
+  "Philadelphia": [39.9008, -75.1675],
+  "San Francisco Bay Area (Santa Clara)": [37.4032, -121.9698],
+  "Seattle": [47.5952, -122.3316],
+  "Toronto": [43.6435, -79.3791],
+  "Vancouver": [49.2768, -123.1133],
+};
+
+const CITY_LABELS_HE = {
+  "Atlanta": "אטלנטה",
+  "Boston (Foxborough)": "בוסטון",
+  "Dallas (Arlington)": "דאלאס",
+  "Guadalajara (Zapopan)": "גוודלחרה",
+  "Houston": "יוסטון",
+  "Kansas City": "קנזס סיטי",
+  "Los Angeles (Inglewood)": "לוס אנג'לס",
+  "Mexico City": "מקסיקו סיטי",
+  "Miami (Miami Gardens)": "מיאמי",
+  "Monterrey (Guadalupe)": "מונטריי",
+  "New York/New Jersey (East Rutherford)": "ניו יורק/ניו ג'רזי",
+  "Philadelphia": "פילדלפיה",
+  "San Francisco Bay Area (Santa Clara)": "סן פרנסיסקו",
+  "Seattle": "סיאטל",
+  "Toronto": "טורונטו",
+  "Vancouver": "ונקובר",
+};
+
+function haversineKm(c1, c2){
+  const R = 6371;
+  const [lat1, lon1] = c1, [lat2, lon2] = c2;
+  const p1 = lat1 * Math.PI/180, p2 = lat2 * Math.PI/180;
+  const dphi = (lat2-lat1) * Math.PI/180;
+  const dlambda = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dphi/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dlambda/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// Builds per-team travel + W/D/L/GD/Pts stats from played matches only,
+// restricted to teams with at least 2 played matches (so at least 1 "leg").
+// Distance is the sum of air-line (great-circle) legs between consecutive
+// host cities, in chronological match order. There is no "leg 0" from a
+// home base — the count starts after the team's first played match.
+function buildTravelStats(matches){
+  const played = sortPlayedChronologically(matches);
+  const byTeam = {};
+  played.forEach(m => {
+    [m.team1, m.team2].forEach(t => {
+      if(!byTeam[t]) byTeam[t] = [];
+      byTeam[t].push(m);
+    });
+  });
+
+  const rows = [];
+  for(const [team, teamMatches] of Object.entries(byTeam)){
+    if(teamMatches.length < 2) continue;
+    const grounds = teamMatches.map(m => m.ground).filter(g => CITY_COORDS[g]);
+    if(grounds.length < 2) continue;
+
+    let distKm = 0;
+    const legs = [];
+    for(let i = 1; i < grounds.length; i++){
+      const from = grounds[i-1], to = grounds[i];
+      const d = haversineKm(CITY_COORDS[from], CITY_COORDS[to]);
+      distKm += d;
+      legs.push({from, to, km: d});
+    }
+
+    let win=0, draw=0, loss=0, gf=0, ga=0;
+    teamMatches.forEach(m => {
+      const isHome = m.team1 === team;
+      const [hs, as] = m.score.ft;
+      const own = isHome ? hs : as;
+      const opp = isHome ? as : hs;
+      gf += own; ga += opp;
+      if(own > opp) win++; else if(own < opp) loss++; else draw++;
+    });
+    const pts = win*3 + draw;
+
+    rows.push({
+      team, played: teamMatches.length, win, draw, loss,
+      gf, ga, gd: gf-ga, pts,
+      distKm: Math.round(distKm),
+      grounds, legs
+    });
+  }
+
+  rows.sort((a,b) => b.distKm - a.distKm);
+  return rows;
+}
+
+// ─── Travel Map (SVG) ──────────────────────────────────────────────────────────
+
+const MAP_LAT_RANGE = [17, 51];
+const MAP_LON_RANGE = [-125, -69];
+
+function projectToSvg(coord, W, H, padding){
+  const [lat, lon] = coord;
+  const [latMin, latMax] = MAP_LAT_RANGE;
+  const [lonMin, lonMax] = MAP_LON_RANGE;
+  const x = padding + ((lon - lonMin) / (lonMax - lonMin)) * (W - 2*padding);
+  // invert y: higher lat = higher on screen (smaller y)
+  const y = padding + (1 - (lat - latMin) / (latMax - latMin)) * (H - 2*padding);
+  return [x, y];
+}
+
+function renderTravelMapSvg(rows){
+  const W = 720, H = 520;
+  const padding = 30;
+
+  // Background dots + labels for all 16 host cities
+  let cityDots = "", cityLabels = "";
+  Object.entries(CITY_COORDS).forEach(([city, coord]) => {
+    const [x, y] = projectToSvg(coord, W, H, padding);
+    cityDots += `<circle class="travel-city-dot" data-city="${attrEscape(city)}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="#c8c0aa" stroke="#fffdf7" stroke-width="1.2"/>`;
+    cityLabels += `<text class="travel-city-label" data-city="${attrEscape(city)}" x="${x.toFixed(1)}" y="${(y-8).toFixed(1)}" font-family="var(--mono)" font-size="10" fill="#a89e88" text-anchor="middle">${svgEscape(CITY_LABELS_HE[city] || city)}</text>`;
+  });
+
+  // Per-team route paths (hidden by default, shown via CSS/JS when team selected)
+  let routePaths = "";
+  rows.forEach(row => {
+    const teamKey = attrEscape(row.team);
+    let segHtml = "";
+    row.legs.forEach(leg => {
+      const [x1, y1] = projectToSvg(CITY_COORDS[leg.from], W, H, padding);
+      const [x2, y2] = projectToSvg(CITY_COORDS[leg.to], W, H, padding);
+      segHtml += `<line class="travel-route-leg" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="var(--red-card)" stroke-width="2.5" marker-end="url(#travelArrow)"/>`;
+    });
+    // Stop markers numbered in chronological order
+    let stopMarkers = "";
+    row.grounds.forEach((g, i) => {
+      const [x, y] = projectToSvg(CITY_COORDS[g], W, H, padding);
+      stopMarkers += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="var(--ink)" stroke="var(--gold)" stroke-width="2"/>
+        <text x="${x.toFixed(1)}" y="${(y+3.5).toFixed(1)}" font-family="var(--mono)" font-size="10" font-weight="700" fill="var(--gold)" text-anchor="middle">${i+1}</text>`;
+    });
+    routePaths += `<g class="travel-route" data-team="${teamKey}" style="display:none">${segHtml}${stopMarkers}</g>`;
+  });
+
+  return `<div class="travel-map-wrap">
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="travelArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--red-card)"/>
+        </marker>
+      </defs>
+      ${cityDots}
+      ${cityLabels}
+      ${routePaths}
+    </svg>
+    <p class="travel-map-hint" id="travelMapHint">לחצו על שורה בטבלה כדי להציג את מסלול הנסיעות של הנבחרת על המפה</p>
+  </div>`;
+}
+
+function showTravelRoute(team){
+  document.querySelectorAll('.travel-route').forEach(g => {
+    g.style.display = g.getAttribute('data-team') === team ? '' : 'none';
+  });
+  document.querySelectorAll('.travel-table-row').forEach(tr => {
+    tr.classList.toggle('selected', tr.getAttribute('data-team') === team);
+  });
+  const hint = document.getElementById('travelMapHint');
+  if(hint) hint.style.display = team ? 'none' : '';
+}
+
+// ─── Travel Table ───────────────────────────────────────────────────────────────
+
+function renderTravelTable(rows){
+  let body = `<table class="data-table travel-table">
+    <thead><tr>
+      <th style="text-align:right">קבוצה</th>
+      <th>מ</th><th>נ</th><th>ת</th><th>ה</th>
+      <th>הפרש</th><th>נק׳</th>
+      <th>ק״מ שנסעו (אווירי)</th>
+    </tr></thead>
+    <tbody>`;
+  const maxDist = Math.max(...rows.map(r => r.distKm), 1);
+  rows.forEach(r => {
+    const gdLabel = r.gd > 0 ? `+${r.gd}` : `${r.gd}`;
+    const barPct = Math.max(4, (r.distKm / maxDist) * 100);
+    body += `<tr class="travel-table-row" data-team="${attrEscape(r.team)}" tabindex="0">
+      <td class="team">${r.team}</td>
+      <td>${r.played}</td>
+      <td>${r.win}</td>
+      <td>${r.draw}</td>
+      <td>${r.loss}</td>
+      <td class="diff ${r.gd>0?'pos':r.gd<0?'neg':''}">${gdLabel}</td>
+      <td class="pts">${r.pts}</td>
+      <td class="travel-km-cell">
+        <span class="travel-km-bar-track"><span class="travel-km-bar-fill" style="width:${barPct}%"></span></span>
+        <span class="travel-km-val">${r.distKm.toLocaleString('he-IL')}</span>
+      </td>
+    </tr>`;
+  });
+  body += `</tbody></table>`;
+  return body;
+}
+
+function setupTravelTableInteraction(){
+  document.querySelectorAll('.travel-table-row').forEach(tr => {
+    const team = tr.getAttribute('data-team');
+    const handleSelect = () => {
+      const alreadySelected = tr.classList.contains('selected');
+      showTravelRoute(alreadySelected ? null : team);
+    };
+    tr.addEventListener('click', handleSelect);
+    tr.addEventListener('keydown', e => {
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); handleSelect(); }
+    });
+  });
+}
+
+function renderTravelSection(matches){
+  const rows = buildTravelStats(matches);
+  const titleInner = `<h2>מרחקי נסיעה <span style="font-family:var(--mono);font-size:0.65em;color:#8a8270;text-transform:none;letter-spacing:0">(אווירי, בין ערי המשחקים)</span></h2><div class="rule"></div><span class="count">${rows.length} נבחרות</span>`;
+
+  if(rows.length === 0){
+    return accordion("section-travel", titleInner,
+      `<p class="analysis-empty">עדיין אין נבחרות עם 2 משחקים או יותר — הטבלה תתעדכן עם המשחקים הבאים</p>`);
+  }
+
+  const longest = rows[0];
+  const shortest = rows[rows.length-1];
+
+  const body = `
+    ${renderTravelMapSvg(rows)}
+    <div class="travel-table-wrap">${renderTravelTable(rows)}</div>
+    <div class="analysis-takeaway">
+      <b>${longest.team}</b> נסעה הכי הרבה עד כה — <b>${longest.distKm.toLocaleString('he-IL')}</b> ק״מ אווירי בין ערי המשחקים.
+      ${rows.length > 1 ? ` <b>${shortest.team}</b> נסעה הכי פחות — ${shortest.distKm.toLocaleString('he-IL')} ק״מ.` : ''}
+      <span style="color:#a89e88">המרחק מחושב כקו אווירי בין ערים עוקבות (לא מסלול הטיסה בפועל), ואינו כולל את ההגעה הראשונית למדינה המארחת.</span>
+    </div>
+  `;
+  return accordion("section-travel", titleInner, body);
+}
+
 // ─── Main render ─────────────────────────────────────────────────────────────
 
 let allMatches = [];
@@ -2727,6 +3056,7 @@ function render(matches, teamFilter){
   html += renderResultsAnalysis(filteredMatches);
   html += renderUpsets(filteredMatches);
   html += renderComebackTracker(filteredMatches);
+  html += renderTravelSection(matches);
   html += renderMatches(filteredMatches);
   html += renderScatterCharts(filteredMatches);
   html += renderPaceComparison(matches, historicalData);
@@ -2747,6 +3077,7 @@ function render(matches, teamFilter){
     });
   });
 
+  setupTravelTableInteraction();
   updateCountdowns();
   setupScatterTooltips();
 }
