@@ -157,6 +157,37 @@
     border-color:var(--gold);
   }
 
+  /* ---------- EXPORT BUTTON ---------- */
+  .export-btn{
+    flex:0 0 auto;
+    font-family:var(--mono);
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--chalk);
+    background:var(--pitch-light);
+    border:1px solid var(--pitch-light);
+    border-radius:3px;
+    padding:6px 12px;
+    cursor:pointer;
+    white-space:nowrap;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    transition:color 0.15s ease, border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+  }
+  .export-btn:hover{
+    color:var(--ink);
+    background:var(--gold);
+    border-color:var(--gold);
+  }
+  .export-btn:disabled{
+    opacity:0.55;
+    cursor:default;
+    background:var(--pitch-light);
+    color:var(--chalk);
+  }
+
   /* ---------- TEAM SEARCH ---------- */
   .team-search{
     flex:0 0 auto;
@@ -1380,6 +1411,7 @@
       <button id="clearTeamSearch" class="clear-search" title="נקה סינון" aria-label="נקה סינון" hidden>×</button>
     </div>
     <button class="toggle-all-btn" id="toggleAllBtn">הרחב הכל</button>
+    <button class="export-btn" id="exportExcelBtn" title="ייצוא כל הנתונים לאקסל" disabled>📊 ייצוא לאקסל</button>
     <a href="#section-recent">משחקים אחרונים</a>
     <a href="#section-upcoming">משחקים הבאים</a>
     <a href="#section-standings">מיקומי בתים</a>
@@ -1406,6 +1438,7 @@
   מקור הנתונים: <a href="https://github.com/openfootball/worldcup.json" target="_blank" rel="noopener">openfootball/worldcup.json</a>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const DATA_URL = "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json";
 
@@ -3005,6 +3038,335 @@ function renderTravelSection(matches){
   return accordion("section-travel", titleInner, body);
 }
 
+// ─── Excel Export ───────────────────────────────────────────────────────────
+
+const EXPORT_HEBREW_HEADER_FILL = "1F5C3A";
+const EXPORT_HEBREW_HEADER_FONT = "FFFFFF";
+
+function exportSheetStyle(ws, headerRowLen){
+  // Bold white-on-green header row + auto column widths (best-effort with SheetJS community build: widths only, no fill/font since that needs xlsx-style/pro).
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const colWidths = [];
+  for(let c = range.s.c; c <= range.e.c; c++){
+    let maxLen = 8;
+    for(let r = range.s.r; r <= range.e.r; r++){
+      const cell = ws[XLSX.utils.encode_cell({r, c})];
+      if(cell && cell.v != null){
+        const len = String(cell.v).length;
+        if(len > maxLen) maxLen = len;
+      }
+    }
+    colWidths.push({wch: Math.min(maxLen + 2, 45)});
+  }
+  ws['!cols'] = colWidths;
+  ws['!rtl'] = true;
+}
+
+function addSheet(wb, name, aoa){
+  if(!aoa || aoa.length <= 1) return; // header only / empty — skip
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  exportSheetStyle(ws, aoa[0] ? aoa[0].length : 0);
+  // Excel sheet names: max 31 chars, no []*?/\:
+  const safeName = name.replace(/[\[\]\*\?\/\\:]/g, '').slice(0, 31);
+  XLSX.utils.book_append_sheet(wb, ws, safeName);
+}
+
+function roundLabelOf(m){
+  return m.round.startsWith("Matchday") ? (m.group ? m.group.replace('Group ','בית ') : m.round) : m.round;
+}
+
+// 4 משחקים אחרונים
+function buildRecentSheetData(matches){
+  const played = sortPlayedChronologically(matches).slice(-4).reverse();
+  const rows = [["תאריך", "שעה (ישראל)", "נבחרת בית", "תוצאה", "נבחרת חוץ", "אצטדיון", "סבב", "מבקיעים"]];
+  played.forEach(m => {
+    const il = matchIsraelTime(m);
+    const [hs, as] = m.score.ft;
+    const allGoals = [];
+    (m.goals1 || []).forEach(g => allGoals.push(`${g.minute}' ${g.name} (${m.team1})`));
+    (m.goals2 || []).forEach(g => allGoals.push(`${g.minute}' ${g.name} (${m.team2})`));
+    rows.push([
+      il ? il.dateStr : m.date,
+      il ? il.timeStr : (m.time || ""),
+      m.team1, `${hs}:${as}`, m.team2,
+      m.ground || "", roundLabelOf(m),
+      allGoals.join(" | ")
+    ]);
+  });
+  return rows;
+}
+
+// המשחקים הבאים
+function buildUpcomingSheetData(matches){
+  const now = new Date();
+  const withIsrael = matches.map(m => ({...m, _il: matchIsraelTime(m)})).filter(m => m._il && !m.score);
+  const sorted = withIsrael.sort((a,b) => a._il.utc - b._il.utc);
+  const rows = [["תאריך", "שעה (ישראל)", "נבחרת בית", "נבחרת חוץ", "אצטדיון", "סבב", "סטטוס"]];
+  sorted.forEach(m => {
+    const isLive = m._il.utc.getTime() <= now.getTime();
+    rows.push([
+      m._il.dateStr, m._il.timeStr, m.team1, m.team2,
+      m.ground || "", roundLabelOf(m),
+      isLive ? "מתקיים / הסתיים לא מעודכן" : "עתידי"
+    ]);
+  });
+  return rows;
+}
+
+// מיקומי בתים
+function buildStandingsSheetData(standings){
+  const qualifiedTeams = computeQualifiedTeams(standings);
+  const rows = [["בית", "קבוצה", "משחקים", "ניצחונות", "תיקו", "הפסדים", "שערים שכבשו", "שערים שספגו", "הפרש שערים", "נקודות", "מעבר לשלב הבא"]];
+  for(const [group, teams] of Object.entries(standings)){
+    teams.forEach(t => {
+      rows.push([
+        group.replace("Group ","בית "), t.team, t.played, t.win, t.draw, t.loss,
+        t.gf, t.ga, t.gf - t.ga, t.pts,
+        qualifiedTeams.has(t.team) ? "כן" : ""
+      ]);
+    });
+  }
+  return rows;
+}
+
+// מבקיעים
+function buildScorersSheetData(scorers){
+  const rows = [["שחקן", "נבחרת", "שערים"]];
+  scorers.forEach(s => rows.push([s.name, s.team, s.count]));
+  return rows;
+}
+
+// שערים לפי דקה
+function buildMinutesSheetData(matches){
+  const bins = buildMinuteBins(matches);
+  const rows = [["טווח דקות", "מחצית", "שערים"]];
+  bins.forEach(b => {
+    const halfLabel = b.extraHalf ? `תוספת זמן (מחצית ${b.extraHalf})` : `מחצית ${b.half}`;
+    rows.push([b.label.replace(/\u200E/g, ''), halfLabel, b.count]);
+  });
+  return rows;
+}
+
+// ניתוח תוצאות — תוצאות שכיחות + התפלגות שערים למשחק (שני בלוקים בגיליון אחד)
+function buildResultsSheetData(matches){
+  const played = matches.filter(m => m.score);
+  if(played.length === 0) return [["אין נתונים"]];
+
+  const scorelineCounts = {};
+  played.forEach(m => {
+    const [hs, as] = m.score.ft;
+    const big = Math.max(hs, as), small = Math.min(hs, as);
+    const key = `${big}:${small}`;
+    scorelineCounts[key] = (scorelineCounts[key] || 0) + 1;
+  });
+  const scorelines = Object.entries(scorelineCounts).map(([label, count]) => ({label, count})).sort((a,b) => b.count - a.count);
+
+  const goalCounts = played.map(m => m.score.ft[0] + m.score.ft[1]);
+  const maxGoals = Math.max(...goalCounts);
+  const dist = {};
+  for(let i = 0; i <= maxGoals; i++) dist[i] = 0;
+  goalCounts.forEach(g => dist[g]++);
+
+  const rows = [["תוצאות שכיחות", "", ""]];
+  rows.push(["תוצאה", "מספר משחקים", ""]);
+  scorelines.forEach(s => rows.push([s.label, s.count, ""]));
+  rows.push(["", "", ""]);
+  rows.push(["התפלגות שערים למשחק", "", ""]);
+  rows.push(["סה״כ שערים במשחק", "מספר משחקים", ""]);
+  Object.entries(dist).forEach(([goals, count]) => rows.push([Number(goals), count, ""]));
+  return rows;
+}
+
+// הפתעות הטורניר
+function buildUpsetsSheetData(matches){
+  const upsets = findUpsets(matches);
+  const rows = [["תאריך", "נבחרת בית", "נבחרת חוץ", "תוצאה", "אצטדיון", "סבב", "אנדרדוג", "דירוג אנדרדוג", "פייבוריט", "דירוג פייבוריט", "פער דירוג", "תוצאה לאנדרדוג"]];
+  upsets.forEach(u => {
+    const [hs, as] = u.m.score.ft;
+    rows.push([
+      u.m.date, u.m.team1, u.m.team2, `${hs}:${as}`,
+      u.m.ground || "", roundLabelOf(u.m),
+      u.underdog, u.underdogRank, u.favorite, u.favoriteRank, u.rankGap,
+      u.outcome === "win" ? "ניצחון" : "תיקו"
+    ]);
+  });
+  return rows;
+}
+
+// משחקים עם מהפך
+function buildComebacksSheetData(matches){
+  const played = matches.filter(m => m.score);
+  const comebacks = played.map(m => ({m, cb: analyzeComeback(m)})).filter(x => x.cb).sort((a,b) => b.cb.deficit - a.cb.deficit);
+  const rows = [["תאריך", "נבחרת בית", "נבחרת חוץ", "תוצאה", "אצטדיון", "סבב", "קבוצה שפיגרה", "פער מקסימלי", "סוג", "פירוט שערים"]];
+  comebacks.forEach(({m, cb}) => {
+    const [hs, as] = m.score.ft;
+    const teamBehind = cb.team === 1 ? m.team1 : m.team2;
+    const events = dramaNarrative(cb.events).map(l => l.replace(/<\/?b>/g, ''));
+    rows.push([
+      m.date, m.team1, m.team2, `${hs}:${as}`,
+      m.ground || "", roundLabelOf(m),
+      teamBehind, cb.deficit,
+      cb.type === "full" ? "מהפך מלא" : "השוואת תוצאה",
+      events.join(" | ")
+    ]);
+  });
+  return rows;
+}
+
+// מרחקי נסיעה (ללא המפה — רק נתוני הטבלה)
+function buildTravelSheetData(matches){
+  const rows = buildTravelStats(matches);
+  const data = [["קבוצה", "משחקים", "ניצחונות", "תיקו", "הפסדים", "הפרש שערים", "נקודות", "ק״מ שנסעו (אווירי)", "ערים (לפי סדר כרונולוגי)"]];
+  rows.forEach(r => {
+    data.push([r.team, r.played, r.win, r.draw, r.loss, r.gd, r.pts, r.distKm, r.grounds.join(" → ")]);
+  });
+  return data;
+}
+
+// לוח משחקים ותוצאות
+function buildMatchesSheetData(matches){
+  const withIsrael = matches.map(m => ({...m, _il: matchIsraelTime(m)}));
+  const sorted = [...withIsrael].sort((a,b) => {
+    if(a._il && b._il) return a._il.utc - b._il.utc;
+    if(a._il) return -1;
+    if(b._il) return 1;
+    return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+  });
+  const rows = [["תאריך", "שעה (ישראל)", "נבחרת בית", "תוצאה", "נבחרת חוץ", "אצטדיון", "סבב", "שוחק"]];
+  sorted.forEach(m => {
+    const played = !!m.score;
+    rows.push([
+      m._il ? m._il.dateStr : m.date,
+      m._il ? m._il.timeStr : (m.time || ""),
+      m.team1,
+      played ? `${m.score.ft[0]}:${m.score.ft[1]}` : "",
+      m.team2,
+      m.ground || "", roundLabelOf(m),
+      played ? "כן" : "לא"
+    ]);
+  });
+  return rows;
+}
+
+// פיזור — מחציות
+function buildHalfGoalsScatterSheetData(matches){
+  const played = matches.filter(m => m.score);
+  const rows = [["נבחרת בית", "נבחרת חוץ", "תוצאה", "שערים במחצית 1", "שערים במחצית 2"]];
+  played.forEach(m => {
+    const {firstHalf, secondHalf} = splitGoalsByHalf(m);
+    const [hs, as] = m.score.ft;
+    rows.push([m.team1, m.team2, `${hs}:${as}`, firstHalf, secondHalf]);
+  });
+  return rows;
+}
+
+// פיזור — פער דירוג מול הפרש שערים
+function buildRankGapScatterSheetData(matches){
+  const played = matches.filter(m => m.score);
+  const rows = [["נבחרת בית", "נבחרת חוץ", "תוצאה", "פייבוריט", "דירוג פייבוריט", "אנדרדוג", "דירוג אנדרדוג", "פער דירוג", "הפרש שערים לטובת הפייבוריט"]];
+  played.forEach(m => {
+    const r1 = FIFA_RANKING[m.team1], r2 = FIFA_RANKING[m.team2];
+    if(r1 === undefined || r2 === undefined) return;
+    const [hs, as] = m.score.ft;
+    const gap = Math.abs(r1 - r2);
+    const favoriteDiff = r1 < r2 ? (hs - as) : (as - hs);
+    const favorite = r1 < r2 ? m.team1 : m.team2;
+    const underdog  = r1 < r2 ? m.team2 : m.team1;
+    const favoriteRank = Math.min(r1, r2);
+    const underdogRank  = Math.max(r1, r2);
+    rows.push([m.team1, m.team2, `${hs}:${as}`, favorite, favoriteRank, underdog, underdogRank, gap, favoriteDiff]);
+  });
+  return rows;
+}
+
+// קצב כיבוש שערים — מונדיאל 2026 מול הקודמים
+function buildPaceSheetData(currentMatches, histData){
+  const currentPlayed = currentMatches.filter(m => m.score).length;
+  if(currentPlayed === 0) return [["אין נתונים"]];
+  const series2026 = buildPaceSeries(currentMatches, currentPlayed);
+  const editions = [{label:"2026 (נוכחי)", data:series2026}];
+  [2022, 2018, 2014].forEach(year => {
+    const m = histData[year];
+    if(!m) return;
+    editions.push({label:String(year), data: buildPaceSeries(m, currentPlayed)});
+  });
+  const rows = [["מונדיאל", "משחקים", "סה״כ שערים", "שערים למשחק (ממוצע)"]];
+  editions.forEach(e => rows.push([e.label, e.data.played, e.data.totalGoals, Number(e.data.avg.toFixed(2))]));
+  return rows;
+}
+
+// ביצועים לפי יבשת
+function buildConfederationsSheetData(matches){
+  if(!matches.some(m => m.score)) return [["אין נתונים"]];
+  const stats = buildConfederationStats(matches);
+  const sorted = [...CONF_ORDER].sort((a,b) => {
+    const sa = stats[a], sb = stats[b];
+    return (sb.pts - sa.pts) || ((sb.gf-sb.ga)-(sa.gf-sa.ga)) || (sb.gf-sa.gf);
+  });
+  const rows = [["קונפדרציה", "משחקים", "ניצחונות", "תיקו", "הפסדים", "שערים שכבשו", "שערים שספגו", "הפרש שערים", "נקודות"]];
+  sorted.forEach(c => {
+    const s = stats[c];
+    const meta = CONFEDERATION_META[c];
+    rows.push([meta.label, s.played, s.wins, s.draws, s.losses, s.gf, s.ga, s.gf - s.ga, s.pts]);
+  });
+  return rows;
+}
+
+function exportToExcel(allMatchesData, teamFilter){
+  const btn = document.getElementById('exportExcelBtn');
+  const originalText = btn ? btn.textContent : "";
+  if(btn){ btn.disabled = true; btn.textContent = "מייצא…"; }
+
+  try{
+    const filteredMatches = teamFilter
+      ? allMatchesData.filter(m => m.team1 === teamFilter || m.team2 === teamFilter)
+      : allMatchesData;
+
+    const standings = buildStandings(allMatchesData);
+    let standingsToShow = standings;
+    if(teamFilter){
+      const group = Object.entries(standings).find(([g, teams]) => teams.some(t => t.team === teamFilter));
+      standingsToShow = group ? {[group[0]]: group[1]} : {};
+    }
+    const scorersAll = buildScorers(allMatchesData);
+    const scorers = teamFilter ? scorersAll.filter(s => s.team === teamFilter) : scorersAll;
+
+    const wb = XLSX.utils.book_new();
+
+    addSheet(wb, "משחקים אחרונים", buildRecentSheetData(filteredMatches));
+    addSheet(wb, "משחקים הבאים", buildUpcomingSheetData(filteredMatches));
+    addSheet(wb, "מיקומי בתים", buildStandingsSheetData(standingsToShow));
+    addSheet(wb, "מבקיעים", buildScorersSheetData(scorers));
+    addSheet(wb, "שערים לפי דקה", buildMinutesSheetData(filteredMatches));
+    addSheet(wb, "ניתוח תוצאות", buildResultsSheetData(filteredMatches));
+    addSheet(wb, "הפתעות", buildUpsetsSheetData(filteredMatches));
+    addSheet(wb, "מהפכים", buildComebacksSheetData(filteredMatches));
+    // Travel section is never filtered by team in the dashboard (it's always
+    // computed from all matches), so the export mirrors that — but if a team
+    // filter is active, restrict the exported rows to that team for relevance.
+    const travelSourceMatches = teamFilter ? filteredMatches : allMatchesData;
+    addSheet(wb, "מרחקי נסיעה", buildTravelSheetData(travelSourceMatches));
+    addSheet(wb, "לוח משחקים", buildMatchesSheetData(filteredMatches));
+    addSheet(wb, "פיזור - מחציות", buildHalfGoalsScatterSheetData(filteredMatches));
+    addSheet(wb, "פיזור - פער דירוג", buildRankGapScatterSheetData(filteredMatches));
+    addSheet(wb, "קצב שערים", buildPaceSheetData(allMatchesData, historicalData));
+    addSheet(wb, "לפי יבשת", buildConfederationsSheetData(allMatchesData));
+
+    if(wb.SheetNames.length === 0){
+      addSheet(wb, "אין נתונים", [["אין נתונים זמינים לייצוא"], ["נסה לרענן את העמוד"]]);
+    }
+
+    const dateStr = new Date().toISOString().slice(0,10);
+    const filenameBase = teamFilter ? `מונדיאל2026_${teamFilter}_${dateStr}` : `מונדיאל2026_${dateStr}`;
+    XLSX.writeFile(wb, `${filenameBase.replace(/\s+/g,'_')}.xlsx`);
+  } catch(err){
+    console.error("שגיאה בייצוא לאקסל:", err);
+    alert("אירעה שגיאה בייצוא הקובץ. נסה שוב.");
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = originalText || "📊 ייצוא לאקסל"; }
+  }
+}
+
 // ─── Main render ─────────────────────────────────────────────────────────────
 
 let allMatches = [];
@@ -3080,6 +3442,12 @@ function render(matches, teamFilter){
   setupTravelTableInteraction();
   updateCountdowns();
   setupScatterTooltips();
+
+  const exportBtn = document.getElementById('exportExcelBtn');
+  if(exportBtn){
+    exportBtn.disabled = false;
+    exportBtn.onclick = () => exportToExcel(matches, teamFilter);
+  }
 }
 
 function setTeamFilter(team){
