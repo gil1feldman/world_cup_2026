@@ -1383,6 +1383,37 @@
     min-width:48px;
     text-align:left;
   }
+
+  /* ─── Knockout Bracket ───────────────────────────── */
+  .bk-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .bk-bracket{display:flex;align-items:center;gap:0;min-width:900px;padding:16px 0 20px;direction:ltr;}
+  .bk-half{display:flex;align-items:stretch;gap:0;flex:1;}
+  .bk-half--right{flex-direction:row-reverse;}
+  .bk-col{display:flex;flex-direction:column;align-items:stretch;min-width:150px;max-width:160px;flex:1;}
+  .bk-col--sf{min-width:155px;}
+  .bk-center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:160px;max-width:170px;gap:6px;padding:0 8px;}
+  .bk-col-label{font-family:var(--mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:#8a8270;text-align:center;padding:0 4px 8px;white-space:nowrap;}
+  .bk-third-label{margin-top:12px;font-family:var(--mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:#8a8270;text-align:center;}
+  .bk-col-matches{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:6px;padding:0 4px;}
+  .bk-match{border:1px solid #e3ddca;background:#fffdf7;border-radius:2px;overflow:hidden;transition:border-color 0.15s ease;}
+  .bk-match:hover{border-color:var(--ink);}
+  .bk-match--empty{border:1px dashed #e3ddca;background:transparent;min-height:62px;}
+  .bk-match-date{font-family:var(--mono);font-size:0.58rem;color:#a89e88;padding:3px 6px 2px;background:#f5f0e6;border-bottom:1px solid #e3ddca;}
+  .bk-team{display:flex;justify-content:space-between;align-items:center;padding:5px 6px;gap:4px;border-bottom:1px solid #f0ead8;min-height:24px;}
+  .bk-team:last-child{border-bottom:none;}
+  .bk-team-name{font-size:0.78rem;font-weight:600;color:var(--ink);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:right;}
+  .bk-team-score{font-family:var(--display);font-size:0.95rem;font-weight:700;color:var(--ink);min-width:14px;text-align:center;}
+  .bk-team.bk-winner .bk-team-name{color:var(--pitch);}
+  .bk-team.bk-winner .bk-team-score{color:var(--pitch);}
+  .bk-team.bk-winner{background:rgba(31,92,58,0.06);}
+  .bk-team.bk-tbd .bk-team-name{color:#a89e88;font-weight:400;font-style:italic;}
+  .bk-team.bk-provisional .bk-team-name{color:var(--gold);}
+  .bk-legend{font-family:var(--mono);font-size:0.68rem;color:#8a8270;margin-top:14px;padding-top:12px;border-top:1px dashed #d8d0bb;text-align:center;direction:rtl;}
+  .bk-leg{display:inline-block;padding:1px 6px;border-radius:2px;font-weight:600;}
+  .bk-leg--resolved{color:var(--ink);background:#ece6d4;}
+  .bk-leg--provisional{color:#a87a18;background:rgba(217,164,65,0.15);}
+  .bk-leg--tbd{color:#a89e88;background:#f0ead8;font-style:italic;}
+
   @media (max-width:600px){
     table.travel-table{ font-size:0.74rem; }
     table.travel-table th, table.travel-table td{ padding:6px 4px; }
@@ -1424,6 +1455,7 @@
     <a href="#section-matches">לוח משחקים</a>
     <a href="#section-scatter">פיזור</a>
     <a href="#section-pace">קצב שערים</a>
+    <a href="#section-knockout">ברקט נוקאאוט</a>
     <a href="#section-confederations">לפי יבשת</a>
   </div>
 </nav>
@@ -3430,6 +3462,7 @@ function render(matches, teamFilter){
   html += renderMatches(filteredMatches);
   html += renderScatterCharts(filteredMatches);
   html += renderPaceComparison(matches, historicalData);
+  html += renderKnockoutBracket(allMatches, standings);
   html += renderConfederations(matches);
 
   document.getElementById('content').innerHTML = html;
@@ -3524,6 +3557,123 @@ async function loadDashboard(){
   } catch(err){
     console.warn("שגיאה בטעינת נתוני מונדיאלים קודמים:", err);
   }
+}
+
+
+// ─── Knockout Bracket ────────────────────────────────────────────────────────
+
+const KO_ROUND_LABELS = {
+  'Round of 32':'שמינית גמר','Round of 16':'שישית עשר',
+  'Quarter-final':'רבע גמר','Semi-final':'חצי גמר',
+  'Final':'גמר','Match for third place':'מקום שלישי',
+};
+
+function buildMatchMap(allMatches){
+  const map={};allMatches.forEach(m=>{if(m.num)map[m.num]=m;});return map;
+}
+
+function resolveSlot(teamStr,matchMap,standings){
+  if(!teamStr) return {label:'TBD',resolved:false};
+  if(!/^[0-9WL]/.test(teamStr)&&!teamStr.includes('/')) return {label:teamStr,resolved:true};
+  const wm=teamStr.match(/^W(\d+)$/);
+  if(wm){
+    const num=Number(wm[1]),m=matchMap[num];
+    if(!m||!m.score) return {label:`מנצח #${num}`,resolved:false};
+    const [s1,s2]=m.score.ft;
+    const winner=s1>s2?m.team1:s2>s1?m.team2:null;
+    if(!winner) return {label:'TBD (תיקו)',resolved:false};
+    return resolveSlot(winner,matchMap,standings);
+  }
+  const lm=teamStr.match(/^L(\d+)$/);
+  if(lm){
+    const num=Number(lm[1]),m=matchMap[num];
+    if(!m||!m.score) return {label:`מפסיד #${num}`,resolved:false};
+    const [s1,s2]=m.score.ft;
+    const loser=s1<s2?m.team1:s2<s1?m.team2:null;
+    if(!loser) return {label:'TBD',resolved:false};
+    return resolveSlot(loser,matchMap,standings);
+  }
+  const pm=teamStr.match(/^([12])([A-L])$/);
+  if(pm){
+    const pos=Number(pm[1])-1,grp=`Group ${pm[2]}`;
+    const grpTeams=standings[grp];
+    if(grpTeams&&grpTeams[pos]&&grpTeams[pos].played>0)
+      return {label:grpTeams[pos].team,resolved:true,provisional:grpTeams[pos].played<3};
+    return {label:`${pm[1]}\u00b0 \u05d1\u05d9\u05ea ${pm[2]}`,resolved:false};
+  }
+  if(teamStr.startsWith('3')) return {label:`\u05de\u05e7\u05d5\u05dd 3 (${teamStr})`,resolved:false};
+  return {label:teamStr,resolved:false};
+}
+
+function bracketMatchCard(m,matchMap,standings){
+  if(!m) return '<div class="bk-match bk-match--empty"></div>';
+  const slot1=resolveSlot(m.team1,matchMap,standings);
+  const slot2=resolveSlot(m.team2,matchMap,standings);
+  const il=matchIsraelTime(m);
+  const dateLabel=il?il.dateStr.slice(5).replace('-','/')+' '+il.timeStr:(m.date?m.date.slice(5).replace('-','/'):'');
+  let score1='',score2='',winner1=false,winner2=false;
+  if(m.score){const [s1,s2]=m.score.ft;score1=s1;score2=s2;winner1=s1>s2;winner2=s2>s1;}
+  const t1cls=winner1?' bk-winner':'',t2cls=winner2?' bk-winner':'';
+  const prov1=slot1.provisional?' bk-provisional':'',prov2=slot2.provisional?' bk-provisional':'';
+  const tbd1=!slot1.resolved?' bk-tbd':'',tbd2=!slot2.resolved?' bk-tbd':'';
+  return `<div class="bk-match" data-num="${m.num}">
+    <div class="bk-match-date">${dateLabel} \u00b7 #${m.num}</div>
+    <div class="bk-team${t1cls}${prov1}${tbd1}">
+      <span class="bk-team-name">${slot1.label}</span>
+      <span class="bk-team-score">${score1!==''?score1:''}</span>
+    </div>
+    <div class="bk-team${t2cls}${prov2}${tbd2}">
+      <span class="bk-team-name">${slot2.label}</span>
+      <span class="bk-team-score">${score2!==''?score2:''}</span>
+    </div>
+  </div>`;
+}
+
+function renderKnockoutBracket(allMatches,standings){
+  const matchMap=buildMatchMap(allMatches);
+  const koMatches=allMatches.filter(m=>KO_ROUND_LABELS[m.round]);
+  const playedKo=koMatches.filter(m=>m.score).length;
+  const titleInner=`<h2>\u05e9\u05dc\u05d1 \u05d4\u05e0\u05d5\u05e7\u05d0\u05d0\u05d5\u05d8 \u2014 \u05d1\u05e8\u05e7\u05d8</h2><div class="rule"></div><span class="count">${playedKo} \u05de\u05e9\u05d7\u05e7\u05d9\u05dd \u05e9\u05d4\u05ea\u05e7\u05d9\u05d9\u05de\u05d5</span>`;
+  const M=num=>matchMap[num];
+  const col=(label,nums)=>{
+    const cards=nums.map(n=>bracketMatchCard(M(n),matchMap,standings)).join('');
+    return `<div class="bk-col"><div class="bk-col-label">${label}</div><div class="bk-col-matches">${cards}</div></div>`;
+  };
+  const body=`
+<div class="bk-scroll-wrap">
+  <div class="bk-bracket">
+    <div class="bk-half bk-half--left">
+      ${col('\u05e9\u05de\u05d9\u05e0\u05d9\u05ea \u05d2\u05de\u05e8',[74,77,73,75,83,84,81,82])}
+      ${col('\u05e9\u05d9\u05e9\u05d9\u05ea \u05e2\u05e9\u05e8',[89,90,93,94])}
+      ${col('\u05e8\u05d1\u05e2 \u05d2\u05de\u05e8',[97,98])}
+      <div class="bk-col bk-col--sf">
+        <div class="bk-col-label">\u05d7\u05e6\u05d9 \u05d2\u05de\u05e8</div>
+        <div class="bk-col-matches">${bracketMatchCard(M(101),matchMap,standings)}</div>
+      </div>
+    </div>
+    <div class="bk-center">
+      <div class="bk-col-label">\u05d2\u05de\u05e8</div>
+      ${bracketMatchCard(M(104),matchMap,standings)}
+      <div class="bk-third-label">\u05de\u05e7\u05d5\u05dd \u05e9\u05dc\u05d9\u05e9\u05d9</div>
+      ${bracketMatchCard(M(103),matchMap,standings)}
+    </div>
+    <div class="bk-half bk-half--right">
+      <div class="bk-col bk-col--sf">
+        <div class="bk-col-label">\u05d7\u05e6\u05d9 \u05d2\u05de\u05e8</div>
+        <div class="bk-col-matches">${bracketMatchCard(M(102),matchMap,standings)}</div>
+      </div>
+      ${col('\u05e8\u05d1\u05e2 \u05d2\u05de\u05e8',[99,100])}
+      ${col('\u05e9\u05d9\u05e9\u05d9\u05ea \u05e2\u05e9\u05e8',[91,92,95,96])}
+      ${col('\u05e9\u05de\u05d9\u05e0\u05d9\u05ea \u05d2\u05de\u05e8',[76,78,79,80,86,88,85,87])}
+    </div>
+  </div>
+  <p class="bk-legend">
+    <span class="bk-leg bk-leg--resolved">\u05e9\u05dd \u05e0\u05d1\u05d7\u05e8\u05ea</span> = \u05e2\u05dc\u05ea\u05d4 \u05de\u05d4\u05d1\u05ea\u05d9\u05dd \u00b7
+    <span class="bk-leg bk-leg--provisional">\u05e9\u05dd \u05e0\u05d1\u05d7\u05e8\u05ea (\u05d6\u05de\u05e0\u05d9)</span> = \u05de\u05d5\u05d1\u05d9\u05dc\u05d4 \u05d0\u05d7\u05e8\u05d9 2 \u05de\u05e9\u05d7\u05e7\u05d9\u05dd \u00b7
+    <span class="bk-leg bk-leg--tbd">TBD</span> = \u05d8\u05e8\u05dd \u05e0\u05e7\u05d1\u05e2
+  </p>
+</div>`;
+  return accordion('section-knockout',titleInner,body);
 }
 
 loadDashboard();
