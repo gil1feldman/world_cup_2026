@@ -1618,8 +1618,16 @@ function computeQualifiedTeams(standings){
   const qualified = new Set();
   for(const teams of Object.values(standings)){
     if(teams.length < 3) continue;
-    // Rule only applies once every team in the group has played exactly 2
-    // matches (i.e. before anyone's 3rd/final group match has been played).
+    // Case 1: all teams played exactly 3 matches — group stage is over,
+    // top 2 are automatically qualified.
+    const allPlayedThree = teams.every(t => t.played === 3);
+    if(allPlayedThree){
+      qualified.add(teams[0].team);
+      qualified.add(teams[1].team);
+      continue;
+    }
+    // Case 2: all teams played exactly 2 matches and the top team(s) have
+    // a 4-point cushion over 3rd place — mathematically cannot be caught.
     const allPlayedExactlyTwo = teams.every(t => t.played === 2);
     if(!allPlayedExactlyTwo) continue;
     const thirdPlacePts = teams[2].pts;
