@@ -1385,24 +1385,27 @@
   }
 
   /* ─── Knockout Bracket ───────────────────────────── */
-  .bk-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .bk-bracket{display:flex;align-items:center;gap:0;min-width:900px;padding:16px 0 20px;direction:ltr;}
+  .bk-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px;}
+  .bk-scroll-wrap::-webkit-scrollbar{height:6px;}
+  .bk-scroll-wrap::-webkit-scrollbar-thumb{background:#c8c0aa;border-radius:3px;}
+  .bk-scroll-wrap::-webkit-scrollbar-track{background:#ece6d4;}
+  .bk-bracket{display:flex;align-items:stretch;gap:0;min-width:960px;padding:16px 0 20px;direction:ltr;}
   .bk-half{display:flex;align-items:stretch;gap:0;flex:1;}
-  .bk-half--right{flex-direction:row-reverse;}
-  .bk-col{display:flex;flex-direction:column;align-items:stretch;min-width:150px;max-width:160px;flex:1;}
-  .bk-col--sf{min-width:155px;}
-  .bk-center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:160px;max-width:170px;gap:6px;padding:0 8px;}
-  .bk-col-label{font-family:var(--mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:#8a8270;text-align:center;padding:0 4px 8px;white-space:nowrap;}
-  .bk-third-label{margin-top:12px;font-family:var(--mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:#8a8270;text-align:center;}
-  .bk-col-matches{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:6px;padding:0 4px;}
+  .bk-half--right{flex-direction:row;}
+  .bk-col{display:flex;flex-direction:column;align-items:stretch;min-width:110px;max-width:130px;flex:1;}
+  .bk-col--sf{min-width:115px;}
+  .bk-center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:140px;max-width:155px;gap:6px;padding:0 6px;}
+  .bk-col-label{display:none;}
+  .bk-third-label{display:none;}
+  .bk-col-matches{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:4px;padding:0 3px;align-items:stretch;}
   .bk-match{border:1px solid #e3ddca;background:#fffdf7;border-radius:2px;overflow:hidden;transition:border-color 0.15s ease;}
   .bk-match:hover{border-color:var(--ink);}
   .bk-match--empty{border:1px dashed #e3ddca;background:transparent;min-height:62px;}
-  .bk-match-date{font-family:var(--mono);font-size:0.58rem;color:#a89e88;padding:3px 6px 2px;background:#f5f0e6;border-bottom:1px solid #e3ddca;}
-  .bk-team{display:flex;justify-content:space-between;align-items:center;padding:5px 6px;gap:4px;border-bottom:1px solid #f0ead8;min-height:24px;}
+  .bk-match-date{font-family:var(--mono);font-size:0.55rem;color:#a89e88;padding:2px 5px;background:#f5f0e6;border-bottom:1px solid #e3ddca;}
+  .bk-team{display:flex;justify-content:space-between;align-items:center;padding:4px 5px;gap:3px;border-bottom:1px solid #f0ead8;min-height:22px;}
   .bk-team:last-child{border-bottom:none;}
-  .bk-team-name{font-size:0.78rem;font-weight:600;color:var(--ink);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:right;}
-  .bk-team-score{font-family:var(--display);font-size:0.95rem;font-weight:700;color:var(--ink);min-width:14px;text-align:center;}
+  .bk-team-name{font-size:0.72rem;font-weight:600;color:var(--ink);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:right;}
+  .bk-team-score{font-family:var(--display);font-size:0.88rem;font-weight:700;color:var(--ink);min-width:12px;text-align:center;}
   .bk-team.bk-winner .bk-team-name{color:var(--pitch);}
   .bk-team.bk-winner .bk-team-score{color:var(--pitch);}
   .bk-team.bk-winner{background:rgba(31,92,58,0.06);}
@@ -1498,7 +1501,7 @@ const FIFA_RANKING = {
 
 // ─── Accordion state ─────────────────────────────────────────────────────────
 // Sections that are open by default (all others start collapsed).
-const DEFAULT_OPEN = new Set(["section-recent", "section-upcoming"]);
+const DEFAULT_OPEN = new Set(["section-recent", "section-upcoming", "section-knockout"]);
 // Tracks which sections are currently open.
 const openSections = new Set(DEFAULT_OPEN);
 
@@ -1646,7 +1649,7 @@ function buildStandings(matches){
 // a 4-point cushion over 3rd place cannot be closed, so the team is locked
 // into one of the top two spots regardless of all remaining results.
 // Points-only rule (goal difference is intentionally not factored in).
-function computeQualifiedTeams(standings){
+function computeQualifiedTeams(standings, allMatchesForKO){
   const qualified = new Set();
   for(const teams of Object.values(standings)){
     if(teams.length < 3) continue;
@@ -1667,6 +1670,30 @@ function computeQualifiedTeams(standings){
       if(t.pts - thirdPlacePts >= 4) qualified.add(t.team);
     });
   }
+
+  // Case 3: best third-placed teams that already appear by name in KO slots.
+  // When the draw for the KO round has been made, team1/team2 in KO matches
+  // contain either a slot string ("3A/B/C") or a real team name.
+  // Any real team name found in a KO match is qualified.
+  if(allMatchesForKO && allMatchesForKO.length){
+    const KO_ROUNDS = new Set([
+      'Round of 32','Round of 16','Quarter-final',
+      'Semi-final','Final','Match for third place'
+    ]);
+    const allGroupTeams = new Set(
+      Object.values(standings).flat().map(t => t.team)
+    );
+    allMatchesForKO.forEach(m => {
+      if(!KO_ROUNDS.has(m.round)) return;
+      [m.team1, m.team2].forEach(slot => {
+        if(!slot) return;
+        // If the slot is a plain team name already known from the group stage
+        // it has been officially placed in the KO bracket → mark as qualified.
+        if(allGroupTeams.has(slot)) qualified.add(slot);
+      });
+    });
+  }
+
   return qualified;
 }
 
@@ -1795,7 +1822,7 @@ function parseGoalMinuteSimple(minuteStr){
 // ─── Standings ────────────────────────────────────────────────────────────────
 
 function renderStandings(standings){
-  const qualifiedTeams = computeQualifiedTeams(standings);
+  const qualifiedTeams = computeQualifiedTeams(standings, allMatches);
   const titleInner = `<h2>מיקומי בתים</h2><div class="rule"></div><span class="count">${Object.keys(standings).length} בתים</span>`;
   let body = `<div class="groups-grid">`;
   for(const [group, teams] of Object.entries(standings)){
@@ -3155,7 +3182,7 @@ function buildUpcomingSheetData(matches){
 
 // מיקומי בתים
 function buildStandingsSheetData(standings){
-  const qualifiedTeams = computeQualifiedTeams(standings);
+  const qualifiedTeams = computeQualifiedTeams(standings, allMatches);
   const rows = [["בית", "קבוצה", "משחקים", "ניצחונות", "תיקו", "הפסדים", "שערים שכבשו", "שערים שספגו", "הפרש שערים", "נקודות", "מעבר לשלב הבא"]];
   for(const [group, teams] of Object.entries(standings)){
     teams.forEach(t => {
@@ -3446,6 +3473,7 @@ function render(matches, teamFilter){
   html += renderTopStats(filteredMatches, scorers, teamFilter);
   html += renderRecentMatches(filteredMatches);
   html += renderUpcomingMatches(filteredMatches);
+  html += renderKnockoutBracket(allMatches, standings);
   html += renderStandings(standingsToShow);
   if(teamFilter && scorers.length === 0){
     const titleInner = `<h2>מבקיעים</h2><div class="rule"></div>`;
@@ -3462,7 +3490,6 @@ function render(matches, teamFilter){
   html += renderMatches(filteredMatches);
   html += renderScatterCharts(filteredMatches);
   html += renderPaceComparison(matches, historicalData);
-  html += renderKnockoutBracket(allMatches, standings);
   html += renderConfederations(matches);
 
   document.getElementById('content').innerHTML = html;
