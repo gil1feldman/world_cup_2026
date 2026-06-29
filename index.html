@@ -3782,6 +3782,67 @@ function renderKnockoutBracket(allMatches,standings){
 
 
 
+
+  // ─── עזר: נרטיב מובנה של המשחק האחרון ──────────────────────────────────────
+  function buildLastMatchNarrative(m) {
+    const [h, a] = m.score.ft;
+    const roundLabel = m.round.startsWith("Matchday")
+      ? (m.group ? m.group.replace("Group ", "בית ") : m.round)
+      : m.round;
+    const il = matchIsraelTime(m);
+    const dateStr = il
+      ? il.dateStr.slice(5).replace("-", "/")
+      : m.date.slice(5).replace("-", "/");
+
+    // כותרת: שמות הנבחרות ותוצאה עטופים ב-ltr
+    const t1 = ltr("<b>" + m.team1 + "</b>");
+    const t2 = ltr("<b>" + m.team2 + "</b>");
+    const sc = ltr(h + ":" + a);
+    let out = "<b>המשחק האחרון שהתקיים:</b> ";
+
+    if (h > a) {
+      out += t1 + " ניצחה את " + t2 + " " + sc;
+    } else if (a > h) {
+      out += t2 + " ניצחה את " + t1 + " " + sc;
+    } else {
+      out += t1 + " ו‌" + t2 + " סיימו בתיקו " + sc;
+    }
+    out += " (" + roundLabel + ", " + ltr(dateStr) + ").";
+
+    // אסוף שערים ממוינים לפי דקה
+    const allGoals = [];
+    (m.goals1 || []).forEach(function(g) {
+      allGoals.push({ name: g.name, team: m.team1, minute: g.minute,
+                      minuteNum: parseGoalMinuteSimple(g.minute) });
+    });
+    (m.goals2 || []).forEach(function(g) {
+      allGoals.push({ name: g.name, team: m.team2, minute: g.minute,
+                      minuteNum: parseGoalMinuteSimple(g.minute) });
+    });
+    allGoals.sort(function(x, y) { return x.minuteNum - y.minuteNum; });
+
+    if (allGoals.length === 0) {
+      out += " המשחק הסתיים ללא שערים.";
+      return out;
+    }
+
+    // רשימת נקודות: • דקה — שם (נבחרת) תוצאה
+    let s1 = 0, s2 = 0;
+    const bullets = [];
+    allGoals.forEach(function(g) {
+      if (g.team === m.team1) s1++; else s2++;
+      const min   = ltr(g.minute + "’");
+      const name  = ltr(g.name);
+      const team  = ltr(g.team);
+      const score = ltr(s1 + ":" + s2);
+      bullets.push("• " + min + " — " + name + " (" + team + ") " + score);
+    });
+
+    out += "<br>" + bullets.join("<br>");
+    return out;
+  }
+
+
 // ─── Summary Text v3 ──────────────────────────────────────────────────────────
 
 // עוטף שמות/תוצאות אנגליים ב-LTR isolate כדי למנוע בלבול RTL
@@ -3945,6 +4006,14 @@ function buildSummaryText(matches, standings, scorers){
     p4 = `<b>הפתעות הטורניר:</b> עד כה לא נרשמו הפתעות בולטות — הנבחרות המדורגות גבוה פועלות בהתאם לציפיות.`;
   }
 
+
+  // ─── פסקה חדשה: משחק אחרון ───────────────────────────────────────────────
+  let pLastMatch = "";
+  if (played.length > 0) {
+    const lastMatch = sortPlayedChronologically(matches).slice(-1)[0];
+    pLastMatch = buildLastMatchNarrative(lastMatch);
+  }
+
   // ─── פסקה 5: 2 משחקים הבאים ─────────────────────────────────────────────
   const nowMs = now.getTime();
   const upcoming = matches
@@ -4084,7 +4153,7 @@ function buildSummaryText(matches, standings, scorers){
     }
   }
 
-  return {dateLabel, paragraphs: [p1, p2, p3, p4, pResults, pComebacks, p5].filter(Boolean)};
+  return {dateLabel, paragraphs: [p1, p2, p3, p4, pResults, pComebacks, pLastMatch, p5].filter(Boolean)};
 }
 
 function renderSummary(matches, standings, scorers){
