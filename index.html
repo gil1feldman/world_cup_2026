@@ -1162,6 +1162,62 @@
   }
   @keyframes spin{ to{ transform:rotate(360deg); } }
 
+  /* ---------- SUMMARY SECTION ---------- */
+  .summary-card{
+    border:2px solid var(--ink);
+    background:#fffdf7;
+    padding:28px 32px 24px;
+  }
+  .summary-card .summary-meta{
+    font-family:var(--mono);
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    color:#8a8270;
+    margin-bottom:16px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .summary-card .summary-meta::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:#d8d0bb;
+  }
+  .summary-card p{
+    font-size:1.05rem;
+    line-height:1.85;
+    color:#1a1612;
+    margin:0 0 14px;
+    text-align:justify;
+  }
+  .summary-card p:last-child{ margin-bottom:0; }
+  .summary-card b{ color:var(--pitch); }
+  .summary-card .summary-copy-btn{
+    margin-top:20px;
+    font-family:var(--mono);
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    background:none;
+    border:1px solid #d8d0bb;
+    border-radius:2px;
+    padding:7px 16px;
+    cursor:pointer;
+    color:#6b6557;
+    transition:border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .summary-card .summary-copy-btn:hover{
+    border-color:var(--ink);
+    color:var(--ink);
+    background:#ece6d4;
+  }
+  .summary-card .summary-copy-btn.copied{
+    border-color:var(--pitch);
+    color:var(--pitch);
+  }
+
   footer{
     text-align:center;
     padding:24px;
@@ -1460,6 +1516,7 @@
     <a href="#section-pace">קצב שערים</a>
     <a href="#section-knockout">ברקט נוקאאוט</a>
     <a href="#section-confederations">לפי יבשת</a>
+    <a href="#section-summary">סיכום</a>
   </div>
 </nav>
 
@@ -3491,6 +3548,7 @@ function render(matches, teamFilter){
   html += renderScatterCharts(filteredMatches);
   html += renderPaceComparison(matches, historicalData);
   html += renderConfederations(matches);
+  html += renderSummary(matches, standings, scorers);
 
   document.getElementById('content').innerHTML = html;
 
@@ -3510,6 +3568,24 @@ function render(matches, teamFilter){
   setupTravelTableInteraction();
   updateCountdowns();
   setupScatterTooltips();
+
+  // Summary copy button
+  const copyBtn = document.getElementById('summaryCopyBtn');
+  if(copyBtn){
+    copyBtn.addEventListener('click', () => {
+      const card = copyBtn.closest('.summary-card');
+      const text = [...card.querySelectorAll('p')]
+        .map(p => p.innerText).join('\n\n');
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.textContent = '✓ הועתק!';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.textContent = '📋 העתק סיכום';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      });
+    });
+  }
 
   const exportBtn = document.getElementById('exportExcelBtn');
   if(exportBtn){
@@ -3702,6 +3778,335 @@ function renderKnockoutBracket(allMatches,standings){
 </div>`;
   return accordion('section-knockout',titleInner,body);
 }
+
+
+
+
+// ─── Summary Text v3 ──────────────────────────────────────────────────────────
+
+// עוטף שמות/תוצאות אנגליים ב-LTR isolate כדי למנוע בלבול RTL
+function ltr(str){ return `<span dir="ltr" style="unicode-bidi:isolate">${str}</span>`; }
+
+// פורמט תוצאת משחק בסדר הנכון: "X גבר על Y תוצאה"
+function matchDesc(m){
+  const [h,a] = m.score.ft;
+  const roundLabel = m.round.startsWith("Matchday")
+    ? (m.group ? m.group.replace("Group ","בית ") : m.round)
+    : m.round;
+  const il = matchIsraelTime(m);
+  const dateStr = il ? il.dateStr.slice(5).replace('-','/') : m.date.slice(5).replace('-','/');
+  const meta = `${roundLabel}, ${dateStr}`;
+  // כל ביטוי עם שמות+תוצאה עטוף ב-ltr אחד שלם כדי שהדפדפן לא יהפוך את הסדר
+  if(h > a){
+    return ltr(`<b>${m.team1}</b> ${h}:${a}`) + ` על פני ` + ltr(m.team2) + ` (${meta})`;
+  } else if(a > h){
+    return ltr(`<b>${m.team2}</b> ${a}:${h}`) + ` על פני ` + ltr(m.team1) + ` (${meta})`;
+  } else {
+    return ltr(m.team1) + ` ו-` + ltr(m.team2) + ` — תיקו ` + ltr(`${h}:${h}`) + ` (${meta})`;
+  }
+}
+
+function teamRecord(team, played){
+  const teamMatches = played.filter(mm => mm.team1 === team || mm.team2 === team);
+  if(teamMatches.length === 0) return "טרם שיחקה";
+  let w=0,d=0,l=0,gf=0,ga=0;
+  teamMatches.forEach(mm => {
+    const isHome = mm.team1 === team;
+    const [h,a] = mm.score.ft;
+    const own = isHome?h:a, opp = isHome?a:h;
+    gf+=own; ga+=opp;
+    if(own>opp) w++; else if(own<opp) l++; else d++;
+  });
+  const pts = w*3+d;
+  let rec = `${w}נ`;
+  if(d>0) rec += `-${d}ת`;
+  if(l>0) rec += `-${l}ה`;
+  rec += `, ${gf}:${ga}, ${pts} נק'`;
+  return rec;
+}
+
+function buildSummaryText(matches, standings, scorers){
+  const played = matches.filter(m => m.score);
+  if(played.length === 0) return null;
+
+  const totalGoals = played.reduce((s,m) => s + m.score.ft[0] + m.score.ft[1], 0);
+  const avgGoals   = (totalGoals / played.length).toFixed(2);
+  const totalMatches = matches.length;
+
+  const st = buildStandings(matches);
+  const qualified = computeQualifiedTeams(st, matches);
+  const topScorers = scorers.slice(0, 3);
+  const upsets = findUpsets(matches);
+
+  // נבחרות שעדיין משחקות = לא הפסידו במשחק נוקאאוט
+  const KO_ROUNDS = new Set(['Round of 32','Round of 16','Quarter-final','Semi-final','Final','Match for third place']);
+  const eliminatedTeams = new Set();
+  matches.filter(m => m.score && KO_ROUNDS.has(m.round)).forEach(m => {
+    const [h,a] = m.score.ft;
+    if(h !== a){
+      eliminatedTeams.add(h < a ? m.team1 : m.team2);
+    }
+  });
+  // סנן רק שמות אמיתיים של נבחרות (לא slots כמו "W74", "1A", "3A/B/C")
+  const isRealTeam = t => t && !/^[0-9WL]/.test(t) && !t.includes('#') && !t.includes('/') && t.length > 2;
+  const allTeams = new Set();
+  matches.forEach(m => {
+    if(isRealTeam(m.team1)) allTeams.add(m.team1);
+    if(isRealTeam(m.team2)) allTeams.add(m.team2);
+  });
+  const stillActive = allTeams.size - eliminatedTeams.size;
+
+  // ימים עד הגמר
+  const finalDate = new Date('2026-07-19T00:00:00Z');
+  const now = new Date();
+  const daysToFinal = Math.ceil((finalDate - now) / (1000 * 60 * 60 * 24));
+
+  // שערים לפי מחציות
+  const bins = buildMinuteBins(matches);
+  const firstHalfGoals  = bins.filter(b => b.half === 1 && !b.extraHalf).reduce((s,b)=>s+b.count,0);
+  const secondHalfGoals = bins.filter(b => b.half === 2 && !b.extraHalf).reduce((s,b)=>s+b.count,0);
+  const extra2Goals = bins.find(b => b.label === "90+")?.count || 0;
+
+  // תאריך עדכון
+  const months = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+  const dateLabel = `${now.getDate()} ב${months[now.getMonth()]} ${now.getFullYear()}, ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  // ─── פסקה 1: סיכום כללי ──────────────────────────────────────────────────
+  let p1 = `נכון ל-<b>${dateLabel}</b> (שעון ישראל), שוחקו <b>${played.length}</b> מתוך <b>${totalMatches}</b> המשחקים במונדיאל 2026. `;
+  p1 += `בטורניר הובקעו עד כה <b>${totalGoals}</b> שערים — ממוצע של <b>${avgGoals}</b> שערים למשחק. `;
+  const stillInTournament = qualified.size - eliminatedTeams.size;
+  if(stillInTournament > 0){
+    p1 += `<b>${stillInTournament}</b> נבחרות עדיין פעילות בטורניר. `;
+  } else if(qualified.size > 0){
+    p1 += `<b>${qualified.size}</b> נבחרות עפילו לשלב הנוקאאוט. `;
+  }
+  if(daysToFinal > 0){
+    p1 += `נותרו <b>${daysToFinal}</b> ימים עד לגמר הטורניר (${ltr("19/7")}).`;
+  } else if(daysToFinal === 0){
+    p1 += `הגמר מתקיים <b>היום</b>.`;
+  } else {
+    p1 += `הגמר התקיים לפני ${Math.abs(daysToFinal)} ימים.`;
+  }
+
+  // ─── פסקה 2: שערים לפי מחציות ───────────────────────────────────────────
+  let p2 = "";
+  if(totalGoals > 0){
+    const firstPct  = Math.round((firstHalfGoals  / totalGoals) * 100);
+    const secondPct = Math.round((secondHalfGoals / totalGoals) * 100);
+    p2  = `פיזור השערים: <b>${firstHalfGoals}</b> שערים במחצית הראשונה (${firstPct}%) `;
+    p2 += `ו-<b>${secondHalfGoals}</b> במחצית השנייה (${secondPct}%). `;
+    p2 += extra2Goals > 0
+      ? `<b>${extra2Goals}</b> ${extra2Goals === 1 ? "שער הובקע" : "שערים הובקעו"} בתוספת הזמן של המחצית השנייה ${ltr("(90+)")}.`
+      : `עד כה לא הובקעו שערים בתוספת הזמן של המחצית השנייה ${ltr("(90+)")}.`;
+  }
+
+  // ─── פסקה 3: מבקיע מוביל ────────────────────────────────────────────────
+  let p3 = "";
+  if(topScorers.length > 0){
+    const leader = topScorers[0];
+    const tied   = topScorers.filter(s => s.count === leader.count);
+    if(tied.length > 1){
+      p3 += `מלכי השערים: ${tied.map(s=>`${ltr(`<b>${s.name}</b>`)} ${ltr(`(${s.team})`)}`)
+        .join(" ו-")}, כל אחד עם <b>${leader.count}</b> ${leader.count===1?"שער":"שערים"}. `;
+    } else {
+      p3 += `מלך השערים: ${ltr(`<b>${leader.name}</b>`)} ${ltr(`(${leader.team})`)} עם <b>${leader.count}</b> ${leader.count===1?"שער":"שערים"}`;
+      if(topScorers[1]){
+        p3 += `; אחריו ${ltr(topScorers[1].name)} ${ltr(`(${topScorers[1].team})`)} עם ${topScorers[1].count}`;
+        if(topScorers[2] && topScorers[2].count === topScorers[1].count){
+          p3 += ` ו-${ltr(topScorers[2].name)} ${ltr(`(${topScorers[2].team})`)} עם ${topScorers[2].count}`;
+        }
+      }
+      p3 += `.`;
+    }
+  }
+
+  // ─── פסקה 4: הפתעות הטורניר (שורה חדשה, מורחבת) ─────────────────────────
+  let p4 = "";
+  if(upsets.length > 0){
+    p4 += `<b>הפתעות הטורניר:</b> נרשמו עד כה <b>${upsets.length}</b> ${upsets.length===1?"הפתעה":"הפתעות"} — תוצאות שבהן נבחרת מדורגת נמוך יותר בדירוג פיפא לא הפסידה לנבחרת עדיפה. `;
+
+    // פירוט עד 3 הפתעות מובילות
+    upsets.slice(0, 3).forEach((u, i) => {
+      const [uh, ua] = u.m.score.ft;
+      const underdogScore = u.m.team1 === u.underdog
+        ? ltr(`${uh}:${ua}`)
+        : ltr(`${ua}:${uh}`);
+      const outcomeLabel = u.outcome === "win" ? `ניצחה ${underdogScore}` : `הגיעה לתיקו`;
+      const roundLabel = u.m.round.startsWith("Matchday")
+        ? (u.m.group ? u.m.group.replace("Group ","בית ") : u.m.round)
+        : u.m.round;
+      p4 += `${ltr(`<b>${u.underdog}</b>`)} ${ltr(`(#${u.underdogRank})`)} ${outcomeLabel} מול ${ltr(`<b>${u.favorite}</b>`)} ${ltr(`(#${u.favoriteRank})`)} — פער של <b>${u.rankGap}</b> מקומות בדירוג (${roundLabel}). `;
+    });
+
+    if(upsets.length > 3){
+      p4 += `בנוסף נרשמו עוד <b>${upsets.length - 3}</b> ${upsets.length-3===1?"הפתעה":"הפתעות"} בטורניר.`;
+    }
+  } else if(played.length >= 8){
+    p4 = `<b>הפתעות הטורניר:</b> עד כה לא נרשמו הפתעות בולטות — הנבחרות המדורגות גבוה פועלות בהתאם לציפיות.`;
+  }
+
+  // ─── פסקה 5: 2 משחקים הבאים ─────────────────────────────────────────────
+  const nowMs = now.getTime();
+  const upcoming = matches
+    .map(m => ({...m, _il: matchIsraelTime(m)}))
+    .filter(m => m._il && !m.score && m._il.utc.getTime() > nowMs)
+    .sort((a,b) => a._il.utc - b._il.utc)
+    .slice(0, 2);
+
+  let p5 = "";
+  if(upcoming.length > 0){
+    const upDescs = upcoming.map(m => {
+      const il = m._il;
+      const roundLabel = m.round.startsWith("Matchday")
+        ? (m.group ? m.group.replace("Group ","בית ") : m.round)
+        : m.round;
+      const t1rec = teamRecord(m.team1, played);
+      const t2rec = teamRecord(m.team2, played);
+      // כמה שעות עד תחילת המשחק
+      const diffMs = il.utc.getTime() - now.getTime();
+      const diffH  = Math.floor(diffMs / 3600000);
+      const diffM  = Math.floor((diffMs % 3600000) / 60000);
+      let timeUntil = "";
+      if(diffMs > 0){
+        if(diffH > 0) timeUntil = `בעוד ${diffH} שעות`;
+        else          timeUntil = `בעוד ${diffM} דקות`;
+      } else {
+        timeUntil = `כרגע`;
+      }
+      const dateStr = ltr(`${il.dateStr.slice(5).replace('-','/')} ${il.timeStr}`);
+      return (
+        `▶ ` +
+        ltr(`<b>${m.team1}</b>`) + ` מול ` + ltr(`<b>${m.team2}</b>`) +
+        ` — ${dateStr} (${timeUntil}) | ${roundLabel}` +
+        `<br>&nbsp;&nbsp;&nbsp;` +
+        ltr(m.team1) + `: ${t1rec} &nbsp;|&nbsp; ` +
+        ltr(m.team2) + `: ${t2rec}`
+      );
+    });
+    p5 = `<b>משחקים קרובים:</b><br>${upDescs.join("<br>")}`;
+  }
+
+  // ─── פסקה חדשה: סיכום תוצאות ────────────────────────────────────────────
+  let pResults = "";
+  if(played.length > 0){
+    // תוצאה שכיחה ביותר
+    const scorelineCounts = {};
+    played.forEach(m => {
+      const [h,a] = m.score.ft;
+      const big = Math.max(h,a), small = Math.min(h,a);
+      const key = `${big}:${small}`;
+      scorelineCounts[key] = (scorelineCounts[key]||0) + 1;
+    });
+    const topScoreline = Object.entries(scorelineCounts)
+      .sort((a,b) => b[1]-a[1])[0];
+
+    // משחק עם הכי הרבה שערים
+    const highestScoringMatch = played.reduce((best, m) => {
+      const total = m.score.ft[0] + m.score.ft[1];
+      return total > (best.score.ft[0]+best.score.ft[1]) ? m : best;
+    }, played[0]);
+    const hsmTotal = highestScoringMatch.score.ft[0] + highestScoringMatch.score.ft[1];
+    const hsmRound = highestScoringMatch.round.startsWith("Matchday")
+      ? (highestScoringMatch.group ? highestScoringMatch.group.replace("Group ","בית ") : highestScoringMatch.round)
+      : highestScoringMatch.round;
+    const [hh, ha] = highestScoringMatch.score.ft;
+
+    // ניצחון בהפרש הגדול ביותר
+    const biggestWin = played.reduce((best, m) => {
+      const diff = Math.abs(m.score.ft[0] - m.score.ft[1]);
+      const bestDiff = Math.abs(best.score.ft[0] - best.score.ft[1]);
+      return diff > bestDiff ? m : best;
+    }, played[0]);
+    const bwDiff = Math.abs(biggestWin.score.ft[0] - biggestWin.score.ft[1]);
+    const bwWinner = biggestWin.score.ft[0] > biggestWin.score.ft[1] ? biggestWin.team1 : biggestWin.team2;
+    const bwLoser  = biggestWin.score.ft[0] > biggestWin.score.ft[1] ? biggestWin.team2 : biggestWin.team1;
+    const [bwH, bwA] = biggestWin.score.ft;
+    const bwScore = biggestWin.score.ft[0] > biggestWin.score.ft[1] ? ltr(`${bwH}:${bwA}`) : ltr(`${bwA}:${bwH}`);
+    const bwRound = biggestWin.round.startsWith("Matchday")
+      ? (biggestWin.group ? biggestWin.group.replace("Group ","בית ") : biggestWin.round)
+      : biggestWin.round;
+
+    // תיקו / הכרעה
+    const draws = played.filter(m => m.score.ft[0] === m.score.ft[1]).length;
+    const decisive = played.length - draws;
+
+    pResults  = `<b>סיכום תוצאות:</b> `;
+    pResults += `התוצאה השכיחה ביותר בטורניר היא ${ltr(`<b>${topScoreline[0]}</b>`)} — `;
+    pResults += `${topScoreline[1]} ${topScoreline[1]===1?"משחק הסתיים":"משחקים הסתיימו"} בתוצאה זו. `;
+    pResults += `${decisive} משחקים הוכרעו (${Math.round(decisive/played.length*100)}%) `;
+    pResults += `ו-${draws} הסתיימו בתיקו. `;
+    pResults += `המשחק עם הכי הרבה שערים התקיים בין `;
+    pResults += ltr(`<b>${highestScoringMatch.team1}</b>`) + ` ל-` + ltr(`<b>${highestScoringMatch.team2}</b>`);
+    pResults += ` — ${ltr(`${hh}:${ha}`)} (${hsmTotal} שערים, ${hsmRound}). `;
+    if(bwDiff >= 3){
+      pResults += `הניצחון בהפרש הגדול ביותר: `;
+      pResults += ltr(`<b>${bwWinner}</b>`) + ` גברה ${bwScore} על ` + ltr(bwLoser);
+      pResults += ` — פער של ${bwDiff} שערים (${bwRound}).`;
+    }
+  }
+
+  // ─── פסקה חדשה: מהפכים ───────────────────────────────────────────────────
+  let pComebacks = "";
+  if(played.length > 0){
+    const allComebacks = played
+      .map(m => ({m, cb: analyzeComeback(m)}))
+      .filter(x => x.cb);
+    const fullComebacks = allComebacks.filter(x => x.cb.type === "full");
+    const drawComebacks = allComebacks.filter(x => x.cb.type === "draw");
+
+    if(allComebacks.length > 0){
+      pComebacks = `<b>מהפכים:</b> `;
+      pComebacks += `${allComebacks.length} מתוך ${played.length} המשחקים (${Math.round(allComebacks.length/played.length*100)}%) `;
+      pComebacks += `כללו קבוצה שפיגרה בתוצאה וחזרה. `;
+      if(fullComebacks.length > 0){
+        pComebacks += `<b>${fullComebacks.length}</b> ${fullComebacks.length===1?"מהם היה מהפך מלא":"מהם היו מהפכים מלאים"} — `;
+        pComebacks += `קבוצה שפיגרה הצליחה לחזור ולנצח. `;
+      }
+      if(drawComebacks.length > 0){
+        pComebacks += `${drawComebacks.length} ${drawComebacks.length===1?"משחק הסתיים":"משחקים הסתיימו"} בהשוואת תוצאה לאחר פיגור. `;
+      }
+      // המהפך הדרמטי ביותר (לפי גודל הפיגור)
+      const biggestComeback = allComebacks.reduce((best, x) =>
+        x.cb.deficit > best.cb.deficit ? x : best, allComebacks[0]);
+      const bcRound = biggestComeback.m.round.startsWith("Matchday")
+        ? (biggestComeback.m.group ? biggestComeback.m.group.replace("Group ","בית ") : biggestComeback.m.round)
+        : biggestComeback.m.round;
+      const bcTeam = biggestComeback.cb.team === 1 ? biggestComeback.m.team1 : biggestComeback.m.team2;
+      const [bcH, bcA] = biggestComeback.m.score.ft;
+      if(biggestComeback.cb.deficit >= 2){
+        pComebacks += `המהפך הדרמטי ביותר: `;
+        pComebacks += ltr(`<b>${bcTeam}</b>`) + ` פיגרה בפער של <b>${biggestComeback.cb.deficit}</b> שערים `;
+        pComebacks += `וסיימה ${biggestComeback.cb.type==="full"?"בניצחון":"בתיקו"} `;
+        pComebacks += `(${ltr(`${bcH}:${bcA}`)}, ${bcRound}).`;
+      }
+    } else if(played.length >= 8){
+      pComebacks = `<b>מהפכים:</b> עד כה לא נרשמו מהפכים בטורניר — בכל המשחקים שהתקיימו, הקבוצה שהתקדמה בתוצאה שמרה על יתרונה.`;
+    }
+  }
+
+  return {dateLabel, paragraphs: [p1, p2, p3, p4, pResults, pComebacks, p5].filter(Boolean)};
+}
+
+function renderSummary(matches, standings, scorers){
+  const result = buildSummaryText(matches, standings, scorers);
+  const titleInner = `<h2>סיכום הטורניר</h2><div class="rule"></div>`;
+
+  if(!result){
+    return accordion("section-summary", titleInner,
+      `<p class="analysis-empty">הסיכום יתעדכן עם תחילת המשחקים</p>`);
+  }
+
+  const paragraphsHtml = result.paragraphs.map(p => `<p>${p}</p>`).join('');
+
+  const body = `<div class="summary-card">
+    <div class="summary-meta">סיכום נכון ל-${result.dateLabel}</div>
+    ${paragraphsHtml}
+    <button class="summary-copy-btn" id="summaryCopyBtn">📋 העתק סיכום</button>
+  </div>`;
+
+  return accordion("section-summary", titleInner, body);
+}
+
 
 loadDashboard();
 setInterval(updateCountdowns, 30000);
