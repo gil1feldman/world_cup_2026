@@ -522,6 +522,33 @@
     background:rgba(217,164,65,0.14);
   }
 
+  .decider-badge{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:0.62rem;
+    font-weight:700;
+    letter-spacing:0.02em;
+    padding:1px 6px;
+    border-radius:2px;
+    margin-right:4px;
+    vertical-align:1px;
+    color:#fffdf7;
+    background:var(--red-card);
+  }
+  .decider-badge.et{ background:var(--gold); color:var(--ink); }
+
+  .bk-decider{
+    font-family:var(--mono);
+    font-size:0.6rem;
+    font-weight:700;
+    text-align:center;
+    color:var(--red-card);
+    padding:3px 4px 4px;
+    border-top:1px dashed #e3ddca;
+    background:#faf3e2;
+  }
+  .bk-decider.et{ color:#a87a18; }
+
   /* ---------- MATCH LIST ---------- */
   .matchday-block{ margin-bottom:22px; }
   .matchday-label{
@@ -1671,6 +1698,53 @@ function matchIsraelTime(m){
   return { dateStr: `${y}-${mo}-${d}`, timeStr: `${hh}:${mm}`, utc };
 }
 
+// מחזיר את תוצאת ההכרעה הרשמית של משחק: פנדלים > הארכה > זמן רגיל
+function getMatchOutcome(m){
+  if(!m.score || !m.score.ft) return null;
+  const ft = m.score.ft;
+  const et = m.score.et || null;
+  const p  = m.score.p  || null;
+  let winnerSide = null, decidedBy = "ft";
+  if(p && p.length === 2 && p[0] !== p[1]){
+    winnerSide = p[0] > p[1] ? 1 : 2;
+    decidedBy = "p";
+  } else if(et && et.length === 2 && et[0] !== et[1]){
+    winnerSide = et[0] > et[1] ? 1 : 2;
+    decidedBy = "et";
+  } else if(ft[0] !== ft[1]){
+    winnerSide = ft[0] > ft[1] ? 1 : 2;
+    decidedBy = "ft";
+  }
+  return { ft, et, p, winnerSide, decidedBy };
+}
+
+// תווית ניקוד ההכרעה לפי מנצח:מפסיד (לא team1:team2!), בלי שם קבוצה —
+// לשימוש כשהקונטקסט כבר מזכיר את שם המנצחת בעצמו (כדי לא לכפול)
+function deciderScoreLabel(outcome){
+  if(!outcome || outcome.winnerSide === null) return "";
+  if(outcome.decidedBy === "p"){
+    const [a,b] = outcome.p;
+    const win  = outcome.winnerSide === 1 ? a : b;
+    const lose = outcome.winnerSide === 1 ? b : a;
+    return `פנדלים ${win}:${lose}`;
+  }
+  if(outcome.decidedBy === "et"){
+    const [a,b] = outcome.et;
+    const win  = outcome.winnerSide === 1 ? a : b;
+    const lose = outcome.winnerSide === 1 ? b : a;
+    return `הארכה ${win}:${lose}`;
+  }
+  return "";
+}
+
+// תווית מלאה הכוללת את שם הקבוצה המנצחת — לתגיות עצמאיות, כדי שלא יהיה ספק מי עלתה
+function deciderLabel(outcome, m){
+  const scoreLabel = deciderScoreLabel(outcome);
+  if(!scoreLabel) return "";
+  const winnerName = outcome.winnerSide === 1 ? m.team1 : m.team2;
+  return `${scoreLabel} (${winnerName})`;
+}
+
 function buildStandings(matches){
   const table = {};
   GROUP_ORDER.forEach(g => table[g] = {});
@@ -1826,7 +1900,10 @@ function renderRecentMatches(matches){
       whenLabel = `${days[dateObj.getUTCDay()]} ${dateObj.getUTCDate()} ${months[dateObj.getUTCMonth()]} · ${il.timeStr}`;
     }
     const [hs, as] = m.score.ft;
-    const homeWin = hs > as, awayWin = as > hs;
+    const oc = getMatchOutcome(m);
+    const homeWin = oc.winnerSide === 1, awayWin = oc.winnerSide === 2;
+    const dLabel = deciderLabel(oc, m);
+    const deciderBadge = dLabel ? `<span class="decider-badge ${oc.decidedBy}">${dLabel}</span>` : '';
     const roundLabel = m.round.startsWith("Matchday")
       ? (m.group ? m.group.replace('Group ','בית ') : m.round)
       : m.round;
@@ -1861,7 +1938,7 @@ function renderRecentMatches(matches){
         <span class="team-home">${m.team1}</span>
         <span class="team-away">${m.team2}</span>
       </div>
-      <div class="recent-meta">${m.ground || ''} · ${roundLabel}</div>
+      <div class="recent-meta">${m.ground || ''} · ${roundLabel}${deciderBadge ? ' ' + deciderBadge : ''}</div>
       ${goalsHtml}
     </div>`;
   });
@@ -2045,11 +2122,14 @@ function renderMatches(matches){
       <p class="matchday-label">${fmtDate(date)} · ${date}</p>`;
     list.forEach(m => {
       const played = !!m.score;
-      let scoreHtml;
+      let scoreHtml, deciderBadge = "";
       if(played){
         const [hs, as] = m.score.ft;
-        const homeWin = hs > as, awayWin = as > hs;
+        const oc = getMatchOutcome(m);
+        const homeWin = oc.winnerSide === 1, awayWin = oc.winnerSide === 2;
         scoreHtml = `<span class="${awayWin?'winner':''}">${as}</span><span class="sep">:</span><span class="${homeWin?'winner':''}">${hs}</span>`;
+        const dLabel = deciderLabel(oc, m);
+        if(dLabel) deciderBadge = `<span class="decider-badge ${oc.decidedBy}">${dLabel}</span>`;
       } else {
         scoreHtml = m._il ? m._il.timeStr : (m.time || "—");
       }
@@ -2073,7 +2153,7 @@ function renderMatches(matches){
         <span class="team home">${m.team1}${homeRankBadge}</span>
         <span class="score ${played?'':'notplayed'}">${scoreHtml}</span>
         <span class="team away">${awayRankBadge}${m.team2}</span>
-        <span class="meta">${m.ground || ''} · ${roundLabel}${calendarIcon}</span>
+        <span class="meta">${m.ground || ''} · ${roundLabel}${deciderBadge ? ' ' + deciderBadge : ''}${calendarIcon}</span>
       </div>`;
     });
     body += `</div>`;
@@ -2170,21 +2250,25 @@ function findUpsets(matches){
   played.forEach(m => {
     const r1 = FIFA_RANKING[m.team1], r2 = FIFA_RANKING[m.team2];
     if(r1 === undefined || r2 === undefined) return;
-    const [hs, as] = m.score.ft;
+    const oc = getMatchOutcome(m);
     let underdog, favorite, underdogRank, favoriteRank, outcome;
     if(r1 > r2){
       underdog = m.team1; favorite = m.team2;
       underdogRank = r1; favoriteRank = r2;
-      outcome = hs > as ? "win" : hs === as ? "draw" : null;
+      if(oc.winnerSide === 1) outcome = oc.decidedBy === "ft" ? "win" : "win_decider";
+      else if(oc.winnerSide === null) outcome = "draw";
+      else outcome = null;
     } else if(r2 > r1){
       underdog = m.team2; favorite = m.team1;
       underdogRank = r2; favoriteRank = r1;
-      outcome = as > hs ? "win" : as === hs ? "draw" : null;
+      if(oc.winnerSide === 2) outcome = oc.decidedBy === "ft" ? "win" : "win_decider";
+      else if(oc.winnerSide === null) outcome = "draw";
+      else outcome = null;
     } else { return; }
     if(!outcome) return;
     const rankGap = underdogRank - favoriteRank;
     if(rankGap < 5) return;
-    upsets.push({m, underdog, favorite, underdogRank, favoriteRank, rankGap, outcome});
+    upsets.push({m, underdog, favorite, underdogRank, favoriteRank, rankGap, outcome, decider: deciderScoreLabel(oc)});
   });
   upsets.sort((a,b) => b.rankGap - a.rankGap);
   return upsets;
@@ -2206,8 +2290,11 @@ function renderUpsets(matches){
   upsets.slice(0, 12).forEach(u => {
     const [hs, as] = u.m.score.ft;
     const roundLabel = u.m.round.startsWith("Matchday") ? (u.m.group ? u.m.group.replace('Group ','בית ') : u.m.round) : u.m.round;
-    const tagClass = u.outcome === "win" ? "full" : "draw";
-    const tagText = u.outcome === "win" ? `${u.underdog} ניצחה!` : `${u.underdog} השיגה שוויון`;
+    const tagClass = u.outcome === "draw" ? "draw" : "full";
+    const tagText =
+      u.outcome === "win"         ? `${u.underdog} ניצחה!` :
+      u.outcome === "win_decider" ? `${u.underdog} ניצחה (${u.decider})!` :
+      `${u.underdog} השיגה שוויון`;
     body += `<div class="comeback-card">
       <div class="cb-header">
         <span class="cb-teams">${u.m.team1} – ${u.m.team2}</span>
@@ -3202,17 +3289,18 @@ function roundLabelOf(m){
 // 4 משחקים אחרונים
 function buildRecentSheetData(matches){
   const played = sortPlayedChronologically(matches).slice(-4).reverse();
-  const rows = [["תאריך", "שעה (ישראל)", "נבחרת בית", "תוצאה", "נבחרת חוץ", "אצטדיון", "סבב", "מבקיעים"]];
+  const rows = [["תאריך", "שעה (ישראל)", "נבחרת בית", "תוצאה", "נבחרת חוץ", "הוכרע", "אצטדיון", "סבב", "מבקיעים"]];
   played.forEach(m => {
     const il = matchIsraelTime(m);
     const [hs, as] = m.score.ft;
+    const oc = getMatchOutcome(m);
     const allGoals = [];
     (m.goals1 || []).forEach(g => allGoals.push(`${g.minute}' ${g.name} (${m.team1})`));
     (m.goals2 || []).forEach(g => allGoals.push(`${g.minute}' ${g.name} (${m.team2})`));
     rows.push([
       il ? il.dateStr : m.date,
       il ? il.timeStr : (m.time || ""),
-      m.team1, `${hs}:${as}`, m.team2,
+      m.team1, `${hs}:${as}`, m.team2, deciderLabel(oc, m),
       m.ground || "", roundLabelOf(m),
       allGoals.join(" | ")
     ]);
@@ -3304,14 +3392,14 @@ function buildResultsSheetData(matches){
 // הפתעות הטורניר
 function buildUpsetsSheetData(matches){
   const upsets = findUpsets(matches);
-  const rows = [["תאריך", "נבחרת בית", "נבחרת חוץ", "תוצאה", "אצטדיון", "סבב", "אנדרדוג", "דירוג אנדרדוג", "פייבוריט", "דירוג פייבוריט", "פער דירוג", "תוצאה לאנדרדוג"]];
+  const rows = [["תאריך", "נבחרת בית", "נבחרת חוץ", "תוצאה", "הוכרע", "אצטדיון", "סבב", "אנדרדוג", "דירוג אנדרדוג", "פייבוריט", "דירוג פייבוריט", "פער דירוג", "תוצאה לאנדרדוג"]];
   upsets.forEach(u => {
     const [hs, as] = u.m.score.ft;
     rows.push([
-      u.m.date, u.m.team1, u.m.team2, `${hs}:${as}`,
+      u.m.date, u.m.team1, u.m.team2, `${hs}:${as}`, u.decider || "",
       u.m.ground || "", roundLabelOf(u.m),
       u.underdog, u.underdogRank, u.favorite, u.favoriteRank, u.rankGap,
-      u.outcome === "win" ? "ניצחון" : "תיקו"
+      u.outcome === "draw" ? "תיקו" : "ניצחון"
     ]);
   });
   return rows;
@@ -3356,14 +3444,16 @@ function buildMatchesSheetData(matches){
     if(b._il) return 1;
     return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
   });
-  const rows = [["תאריך", "שעה (ישראל)", "נבחרת בית", "תוצאה", "נבחרת חוץ", "אצטדיון", "סבב", "שוחק"]];
+  const rows = [["תאריך", "שעה (ישראל)", "נבחרת בית", "תוצאה", "הוכרע", "נבחרת חוץ", "אצטדיון", "סבב", "שוחק"]];
   sorted.forEach(m => {
     const played = !!m.score;
+    const oc = played ? getMatchOutcome(m) : null;
     rows.push([
       m._il ? m._il.dateStr : m.date,
       m._il ? m._il.timeStr : (m.time || ""),
       m.team1,
       played ? `${m.score.ft[0]}:${m.score.ft[1]}` : "",
+      played ? deciderLabel(oc, m) : "",
       m.team2,
       m.ground || "", roundLabelOf(m),
       played ? "כן" : "לא"
@@ -3681,19 +3771,17 @@ function resolveSlot(teamStr,matchMap,standings){
   const wm=teamStr.match(/^W(\d+)$/);
   if(wm){
     const num=Number(wm[1]),m=matchMap[num];
-    if(!m||!m.score) return {label:`מנצח #${num}`,resolved:false};
-    const [s1,s2]=m.score.ft;
-    const winner=s1>s2?m.team1:s2>s1?m.team2:null;
-    if(!winner) return {label:'TBD (תיקו)',resolved:false};
+    const oc=m&&m.score?getMatchOutcome(m):null;
+    if(!oc||oc.winnerSide===null) return {label:`מנצח #${num}`,resolved:false};
+    const winner=oc.winnerSide===1?m.team1:m.team2;
     return resolveSlot(winner,matchMap,standings);
   }
   const lm=teamStr.match(/^L(\d+)$/);
   if(lm){
     const num=Number(lm[1]),m=matchMap[num];
-    if(!m||!m.score) return {label:`מפסיד #${num}`,resolved:false};
-    const [s1,s2]=m.score.ft;
-    const loser=s1<s2?m.team1:s2<s1?m.team2:null;
-    if(!loser) return {label:'TBD',resolved:false};
+    const oc=m&&m.score?getMatchOutcome(m):null;
+    if(!oc||oc.winnerSide===null) return {label:`מפסיד #${num}`,resolved:false};
+    const loser=oc.winnerSide===1?m.team2:m.team1;
     return resolveSlot(loser,matchMap,standings);
   }
   const pm=teamStr.match(/^([12])([A-L])$/);
@@ -3714,8 +3802,16 @@ function bracketMatchCard(m,matchMap,standings){
   const slot2=resolveSlot(m.team2,matchMap,standings);
   const il=matchIsraelTime(m);
   const dateLabel=il?il.dateStr.slice(5).replace('-','/')+' '+il.timeStr:(m.date?m.date.slice(5).replace('-','/'):'');
-  let score1='',score2='',winner1=false,winner2=false;
-  if(m.score){const [s1,s2]=m.score.ft;score1=s1;score2=s2;winner1=s1>s2;winner2=s2>s1;}
+  let score1='',score2='',winner1=false,winner2=false,deciderHtml='';
+  if(m.score){
+    const [s1,s2]=m.score.ft;
+    score1=s1;score2=s2;
+    const oc=getMatchOutcome(m);
+    winner1=oc.winnerSide===1;
+    winner2=oc.winnerSide===2;
+    const dLabel=deciderScoreLabel(oc);
+    if(dLabel) deciderHtml=`<div class="bk-decider ${oc.decidedBy}">${dLabel}</div>`;
+  }
   const t1cls=winner1?' bk-winner':'',t2cls=winner2?' bk-winner':'';
   const prov1=slot1.provisional?' bk-provisional':'',prov2=slot2.provisional?' bk-provisional':'';
   const tbd1=!slot1.resolved?' bk-tbd':'',tbd2=!slot2.resolved?' bk-tbd':'';
@@ -3729,6 +3825,7 @@ function bracketMatchCard(m,matchMap,standings){
       <span class="bk-team-name">${slot2.label}</span>
       <span class="bk-team-score">${score2!==''?score2:''}</span>
     </div>
+    ${deciderHtml}
   </div>`;
 }
 
@@ -3800,10 +3897,13 @@ function renderKnockoutBracket(allMatches,standings){
     const sc = ltr(h + ":" + a);
     let out = "<b>המשחק האחרון שהתקיים:</b> ";
 
-    if (h > a) {
+    const oc = getMatchOutcome(m);
+    if (oc.winnerSide === 1) {
       out += t1 + " ניצחה את " + t2 + " " + sc;
-    } else if (a > h) {
+      if (oc.decidedBy !== "ft") out += " " + ltr(`(${deciderScoreLabel(oc)})`);
+    } else if (oc.winnerSide === 2) {
       out += t2 + " ניצחה את " + t1 + " " + sc;
+      if (oc.decidedBy !== "ft") out += " " + ltr(`(${deciderScoreLabel(oc)})`);
     } else {
       out += t1 + " ו‌" + t2 + " סיימו בתיקו " + sc;
     }
@@ -4095,8 +4195,8 @@ function buildSummaryText(matches, standings, scorers){
       ? (biggestWin.group ? biggestWin.group.replace("Group ","בית ") : biggestWin.round)
       : biggestWin.round;
 
-    // תיקו / הכרעה
-    const draws = played.filter(m => m.score.ft[0] === m.score.ft[1]).length;
+    // תיקו / הכרעה (תיקו אמיתי = אין מנצח רשמי, גם לא בהארכה/בפנדלים)
+    const draws = played.filter(m => getMatchOutcome(m).winnerSide === null).length;
     const decisive = played.length - draws;
 
     pResults  = `<b>סיכום תוצאות:</b> `;
