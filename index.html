@@ -1542,6 +1542,7 @@
     <a href="#section-scatter">פיזור</a>
     <a href="#section-pace">קצב שערים</a>
     <a href="#section-knockout">ברקט נוקאאוט</a>
+    <a href="#section-decisive">שלבי הכרעה</a>
     <a href="#section-confederations">לפי יבשת</a>
     <a href="#section-summary">סיכום</a>
   </div>
@@ -3554,6 +3555,7 @@ function exportToExcel(allMatchesData, teamFilter){
     addSheet(wb, "שערים לפי דקה", buildMinutesSheetData(filteredMatches));
     addSheet(wb, "ניתוח תוצאות", buildResultsSheetData(filteredMatches));
     addSheet(wb, "הפתעות", buildUpsetsSheetData(filteredMatches));
+    addSheet(wb, "שלבי הכרעה", buildDecisionStagesSheetData(filteredMatches));
     addSheet(wb, "מהפכים", buildComebacksSheetData(filteredMatches));
     // Travel section is never filtered by team in the dashboard (it's always
     // computed from all matches), so the export mirrors that — but if a team
@@ -3621,6 +3623,7 @@ function render(matches, teamFilter){
   html += renderRecentMatches(filteredMatches);
   html += renderUpcomingMatches(filteredMatches);
   html += renderKnockoutBracket(allMatches, standings);
+  html += renderDecisionStages(filteredMatches);
   html += renderStandings(standingsToShow);
   if(teamFilter && scorers.length === 0){
     const titleInner = `<h2>מבקיעים</h2><div class="rule"></div>`;
@@ -3875,6 +3878,216 @@ function renderKnockoutBracket(allMatches,standings){
 </div>`;
   return accordion('section-knockout',titleInner,body);
 }
+
+// ─── שלבי הכרעה (90' / הארכה / פנדלים) ────────────────────────────────────────
+
+const KO_ROUNDS_FOR_DECISION = ['Round of 32','Round of 16','Quarter-final','Semi-final','Final','Match for third place'];
+
+function buildDecisionStats(matches){
+  const koRoundsSet = new Set(KO_ROUNDS_FOR_DECISION);
+  const koPlayed = matches.filter(m => koRoundsSet.has(m.round) && m.score);
+  const buckets = {ft: [], et: [], p: [], pending: []};
+  koPlayed.forEach(m => {
+    const oc = getMatchOutcome(m);
+    if(!oc) return;
+    if(oc.winnerSide === null){
+      buckets.pending.push({m, oc});
+    } else {
+      buckets[oc.decidedBy].push({m, oc});
+    }
+  });
+
+  const byRound = {};
+  KO_ROUNDS_FOR_DECISION.forEach(r => { byRound[r] = {ft:0, et:0, p:0, total:0}; });
+  ['ft','et','p'].forEach(key => {
+    buckets[key].forEach(({m}) => {
+      const r = byRound[m.round];
+      if(!r) return;
+      r[key]++;
+      r.total++;
+    });
+  });
+
+  // שערי הארכה (דקה 91+) — ספירה עצמאית, לא תלויה בבינים של "שערים לפי דקה"
+  let extraTimeGoals = 0;
+  koPlayed.forEach(m => {
+    [m.goals1, m.goals2].forEach(goals => {
+      (goals || []).forEach(g => {
+        if(parseGoalMinuteSimple(g.minute) > 90) extraTimeGoals++;
+      });
+    });
+  });
+
+  const total = buckets.ft.length + buckets.et.length + buckets.p.length;
+  return { total, buckets, byRound, extraTimeGoals, pendingCount: buckets.pending.length };
+}
+
+function renderDecisionDonut(stats){
+  const { total, buckets } = stats;
+  if(total === 0) return '';
+  const segments = [
+    {count: buckets.ft.length, color:'var(--pitch)'},
+    {count: buckets.et.length, color:'var(--gold)'},
+    {count: buckets.p.length,  color:'var(--red-card)'},
+  ];
+  const W = 240, cx = W/2, cy = W/2, r = 88, sw = 30;
+  const circ = 2 * Math.PI * r;
+  let acc = 0, arcs = '';
+  segments.forEach(seg => {
+    if(seg.count === 0) return;
+    const len = (seg.count/total) * circ;
+    const rot = (acc/circ) * 360 - 90;
+    arcs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${sw}" stroke-dasharray="${len.toFixed(1)} ${(circ-len).toFixed(1)}" transform="rotate(${rot.toFixed(1)} ${cx} ${cy})"/>`;
+    acc += len;
+  });
+  const ftPct = Math.round(buckets.ft.length/total*100);
+  return `<div class="chart-wrap" style="display:flex;justify-content:center;padding:6px 0 2px">
+    <svg viewBox="0 0 ${W} ${W}" xmlns="http://www.w3.org/2000/svg" style="max-width:240px;width:100%">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#ece6d4" stroke-width="${sw}"/>
+      ${arcs}
+      <text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="var(--display)" font-size="32" font-weight="700" fill="var(--ink)">${ftPct}%</text>
+      <text x="${cx}" y="${cy+20}" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="#8a8270">הוכרעו ב-90'</text>
+    </svg>
+  </div>`;
+}
+
+function renderDecisionStageCard(entry){
+  const { m, oc } = entry;
+  const roundLabel = KO_ROUND_LABELS[m.round] || m.round;
+  const winnerName = oc.winnerSide === 1 ? m.team1 : m.team2;
+  // כל שלב מוצג מנצח:מפסיד (לא team1:team2) — עקבי עם שאר הדשבורד, כדי שלא
+  // יהיה ספק איך לקרוא את המספרים לצד שם הקבוצה שעלתה
+  const stageScore = pair => {
+    if(!pair) return null;
+    const win = oc.winnerSide === 1 ? pair[0] : pair[1];
+    const lose = oc.winnerSide === 1 ? pair[1] : pair[0];
+    return `${win}:${lose}`;
+  };
+  let stagesLine = `90': ${ltr(stageScore(m.score.ft))}`;
+  if(m.score.et) stagesLine += ` ← הארכה: ${ltr(stageScore(m.score.et))}`;
+  if(m.score.p)  stagesLine += ` ← פנדלים: ${ltr(stageScore(m.score.p))}`;
+  const tagClass = oc.decidedBy === 'p' ? 'full' : 'draw';
+  const tagText = oc.decidedBy === 'p'
+    ? `הוכרע בפנדלים — ${winnerName} עלתה`
+    : `הוכרע בהארכה — ${winnerName} עלתה`;
+  return `<div class="comeback-card">
+    <div class="cb-header">
+      <span class="cb-teams">${m.team1} – ${m.team2}</span>
+    </div>
+    <div class="cb-meta">${m.date} · ${m.ground || ''} · ${roundLabel}</div>
+    <span class="cb-tag ${tagClass}">${tagText}</span>
+    <div class="cb-note">${stagesLine}</div>
+  </div>`;
+}
+
+function renderDecisionStages(matches){
+  const stats = buildDecisionStats(matches);
+  const titleInner = `<h2>שלבי ההכרעה בנוקאאוט</h2><div class="rule"></div><span class="count">${stats.total} משחקי נוקאאוט שהתקיימו</span>`;
+
+  if(stats.total === 0){
+    return accordion("section-decisive", titleInner,
+      `<p class="analysis-empty">שלב הנוקאאוט עדיין לא התחיל — הנתונים יתעדכנו עם המשחקים הראשונים</p>`);
+  }
+
+  const { buckets, byRound, extraTimeGoals, pendingCount } = stats;
+  const ftCount = buckets.ft.length, etCount = buckets.et.length, pCount = buckets.p.length;
+  const beyondCount = etCount + pCount;
+  const ftPct = Math.round(ftCount/stats.total*100);
+  const beyondPct = 100 - ftPct;
+
+  let body = `<div class="stat-grid">
+    <div class="stat-card accent"><div class="num">${stats.total}</div><div class="lbl">משחקי נוקאאוט שהתקיימו</div></div>
+    <div class="stat-card accent"><div class="num">${ftCount}</div><div class="lbl">הוכרעו ב-90 דקות</div></div>
+    <div class="stat-card gold"><div class="num">${beyondCount}</div><div class="lbl">הלכו להארכה</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--red-card)">${pCount}</div><div class="lbl">הוכרעו בפנדלים</div></div>
+  </div>`;
+
+  let takeaway = `<b>${ftPct}%</b> ממשחקי הנוקאאוט שהתקיימו עד כה הוכרעו תוך 90 דקות, ו-<b>${beyondPct}%</b> דרשו הארכה`;
+  takeaway += pCount > 0 ? ` — מתוכם <b>${pCount}</b> ${pCount===1?'משחק הוכרע':'משחקים הוכרעו'} בפנדלים.` : `.`;
+  if(extraTimeGoals > 0){
+    takeaway += ` בסך הכל הובקעו <b>${extraTimeGoals}</b> ${extraTimeGoals===1?'שער':'שערים'} בזמן ההארכה.`;
+  }
+  const roundsWithData = KO_ROUNDS_FOR_DECISION.filter(r => byRound[r].total > 0);
+  if(roundsWithData.length > 1){
+    const worst = roundsWithData
+      .map(r => ({r, pct: (byRound[r].et + byRound[r].p) / byRound[r].total}))
+      .filter(x => x.pct > 0)
+      .sort((a,b) => b.pct - a.pct)[0];
+    if(worst){
+      takeaway += ` הסבב עם שיעור החריגה הגבוה ביותר מ-90 דקות הוא <b>${KO_ROUND_LABELS[worst.r] || worst.r}</b> (${Math.round(worst.pct*100)}%).`;
+    }
+  }
+  if(pendingCount > 0){
+    takeaway += ` <span style="color:#a89e88">(${pendingCount} ${pendingCount===1?'משחק נוסף הסתיים':'משחקים נוספים הסתיימו'} בתיקו אחרי 90 דקות אך תוצאת ההארכה/הפנדלים עדיין לא עודכנה במקור הנתונים.)</span>`;
+  }
+
+  body += `<div class="analysis-card" style="margin-top:16px">
+    <h3>פילוח שלבי ההכרעה</h3>
+    ${renderDecisionDonut(stats)}
+    <div class="pace-legend" style="justify-content:center">
+      <span><i class="swatch" style="background:var(--pitch)"></i>90 דקות (${ftCount})</span>
+      <span><i class="swatch" style="background:var(--gold)"></i>הוכרע בהארכה (${etCount})</span>
+      <span><i class="swatch" style="background:var(--red-card)"></i>פנדלים (${pCount})</span>
+    </div>
+    <div class="analysis-takeaway">${takeaway}</div>
+  </div>`;
+
+  if(roundsWithData.length > 0){
+    let rows = '';
+    roundsWithData.forEach(r => {
+      const d = byRound[r];
+      const beyondRoundPct = Math.round((d.et + d.p) / d.total * 100);
+      rows += `<tr>
+        <td class="conf-name">${KO_ROUND_LABELS[r] || r}</td>
+        <td>${d.total}</td>
+        <td>${d.ft}</td>
+        <td>${d.et}</td>
+        <td style="color:var(--red-card);font-weight:700">${d.p}</td>
+        <td class="conf-pts">${beyondRoundPct}%</td>
+      </tr>`;
+    });
+    body += `<div class="conf-table-wrap" style="margin-top:16px">
+      <table class="conf-table">
+        <thead><tr>
+          <th style="text-align:right">סבב</th>
+          <th>משחקים</th><th>90'</th><th>הארכה</th><th>פנדלים</th><th>% מעבר ל-90'</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
+
+  const dramatic = [...buckets.et, ...buckets.p].sort((a,b) => (a.m.date < b.m.date ? 1 : a.m.date > b.m.date ? -1 : 0));
+  if(dramatic.length > 0){
+    body += `<div style="margin-top:16px">
+      <p class="matchday-label" style="margin-bottom:10px">המשחקים שהלכו מעבר ל-90 דקות</p>
+      <div class="comeback-grid">${dramatic.map(renderDecisionStageCard).join('')}</div>
+    </div>`;
+  }
+
+  return accordion("section-decisive", titleInner, body);
+}
+
+function buildDecisionStagesSheetData(matches){
+  const stats = buildDecisionStats(matches);
+  if(stats.total === 0) return [["אין נתונים"]];
+  const rows = [["תאריך", "נבחרת בית", "נבחרת חוץ", "סבב", "90'", "הארכה", "פנדלים", "הוכרע", "מנצחת"]];
+  const allEntries = [...stats.buckets.ft, ...stats.buckets.et, ...stats.buckets.p]
+    .sort((a,b) => a.m.date < b.m.date ? -1 : a.m.date > b.m.date ? 1 : 0);
+  allEntries.forEach(({m, oc}) => {
+    const ft = m.score.ft, et = m.score.et, p = m.score.p;
+    rows.push([
+      m.date, m.team1, m.team2, KO_ROUND_LABELS[m.round] || m.round,
+      `${ft[0]}:${ft[1]}`,
+      et ? `${et[0]}:${et[1]}` : "",
+      p ? `${p[0]}:${p[1]}` : "",
+      oc.decidedBy === "ft" ? "90 דקות" : oc.decidedBy === "et" ? "הארכה" : "פנדלים",
+      oc.winnerSide === 1 ? m.team1 : m.team2
+    ]);
+  });
+  return rows;
+}
+
 
 
 
