@@ -3755,6 +3755,36 @@ function exportToExcel(allMatchesData, teamFilter){
   }
 }
 
+
+// ─── Deep Linking (קישור ישיר לסקשן) ────────────────────────────────────────
+
+function focusSection(id){
+  if(!id) return false;
+  const el = document.querySelector(`[data-section-id="${id}"]`);
+  if(!el) return false;
+  setSection(id, true);
+  requestAnimationFrame(() => {
+    el.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+  return true;
+}
+
+function setupHashLinks(){
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href^="#section-"]');
+    if(!link) return;
+    const id = link.getAttribute('href').slice(1);
+    if(document.querySelector(`[data-section-id="${id}"]`)){
+      e.preventDefault();
+      focusSection(id);
+      history.pushState(null, '', `#${id}`);
+    }
+  });
+  window.addEventListener('hashchange', () => {
+    focusSection(window.location.hash.slice(1));
+  });
+}
+
 // ─── Main render ─────────────────────────────────────────────────────────────
 
 let allMatches = [];
@@ -3919,6 +3949,9 @@ async function loadDashboard(){
     allMatches = data.matches;
     setupTeamSearch(allMatches);
     render(allMatches, selectedTeam);
+    if(window.location.hash){
+      focusSection(window.location.hash.slice(1));
+    }
   } catch(err){
     document.getElementById('content').innerHTML = `<div class="error">שגיאה בטעינת הנתונים: ${err.message}<br>נסה לרענן את העמוד, או בדוק חיבור לאינטרנט.</div>`;
     document.getElementById('statusRow').innerHTML = `<span class="status-pill" style="border-color:var(--red-card); color:#ffd9cf">שגיאת טעינה</span>`;
@@ -4787,6 +4820,7 @@ function renderSummary(matches, standings, scorers){
 }
 
 
+setupHashLinks();
 loadDashboard();
 setInterval(updateCountdowns, 30000);
 </script>
