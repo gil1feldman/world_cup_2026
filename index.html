@@ -3972,7 +3972,7 @@ async function loadDashboard(){
 // ─── Knockout Bracket ────────────────────────────────────────────────────────
 
 const KO_ROUND_LABELS = {
-  'Round of 32':'שמינית גמר','Round of 16':'שישית עשר',
+  'Round of 32':'32 האחרונות','Round of 16':'שמינית גמר',
   'Quarter-final':'רבע גמר','Semi-final':'חצי גמר',
   'Final':'גמר','Match for third place':'מקום שלישי',
 };
@@ -4059,8 +4059,8 @@ function renderKnockoutBracket(allMatches,standings){
 <div class="bk-scroll-wrap">
   <div class="bk-bracket">
     <div class="bk-half bk-half--left">
-      ${col('\u05e9\u05de\u05d9\u05e0\u05d9\u05ea \u05d2\u05de\u05e8',[74,77,73,75,83,84,81,82])}
-      ${col('\u05e9\u05d9\u05e9\u05d9\u05ea \u05e2\u05e9\u05e8',[89,90,93,94])}
+      ${col('32 \u05d4\u05d0\u05d7\u05e8\u05d5\u05e0\u05d5\u05ea',[74,77,73,75,83,84,81,82])}
+      ${col('\u05e9\u05de\u05d9\u05e0\u05d9\u05ea \u05d2\u05de\u05e8',[89,90,93,94])}
       ${col('\u05e8\u05d1\u05e2 \u05d2\u05de\u05e8',[97,98])}
       <div class="bk-col bk-col--sf">
         <div class="bk-col-label">\u05d7\u05e6\u05d9 \u05d2\u05de\u05e8</div>
@@ -4079,8 +4079,8 @@ function renderKnockoutBracket(allMatches,standings){
         <div class="bk-col-matches">${bracketMatchCard(M(102),matchMap,standings)}</div>
       </div>
       ${col('\u05e8\u05d1\u05e2 \u05d2\u05de\u05e8',[99,100])}
-      ${col('\u05e9\u05d9\u05e9\u05d9\u05ea \u05e2\u05e9\u05e8',[91,92,95,96])}
-      ${col('\u05e9\u05de\u05d9\u05e0\u05d9\u05ea \u05d2\u05de\u05e8',[76,78,79,80,86,88,85,87])}
+      ${col('\u05e9\u05de\u05d9\u05e0\u05d9\u05ea \u05d2\u05de\u05e8',[91,92,95,96])}
+      ${col('32 \u05d4\u05d0\u05d7\u05e8\u05d5\u05e0\u05d5\u05ea',[76,78,79,80,86,88,85,87])}
     </div>
   </div>
   <p class="bk-legend">
