@@ -1533,6 +1533,112 @@
     table.travel-table th, table.travel-table td{ padding:6px 4px; }
     .travel-km-cell{ min-width:90px; }
   }
+
+  /* ─── Open Diaries (פתחו יומנים) ─────────────────────── */
+  .section-share-btn{
+    flex:0 0 auto;
+    font-family:var(--mono);
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--pitch);
+    background:none;
+    border:1px solid #d8d0bb;
+    border-radius:3px;
+    padding:5px 10px;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .section-share-btn:hover{
+    color:var(--ink);
+    background:#ece6d4;
+    border-color:var(--pitch);
+  }
+  .section-share-btn.copied{
+    color:var(--pitch);
+    border-color:var(--pitch);
+  }
+
+  .diary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));
+    gap:14px;
+  }
+  .diary-card{
+    border:2px solid var(--ink);
+    background:#fffdf7;
+    padding:14px 16px 14px;
+  }
+  .diary-header{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:10px;
+    font-family:var(--mono);
+    font-size:0.7rem;
+    color:#8a8270;
+  }
+  .diary-round{
+    color:var(--gold);
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+  }
+  .diary-matchup{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .diary-team{
+    flex:1;
+    min-width:0;
+  }
+  .diary-team-name{
+    font-weight:700;
+    font-size:0.98rem;
+    margin-bottom:6px;
+  }
+  .diary-vs{
+    font-family:var(--mono);
+    font-size:0.72rem;
+    color:#a89e88;
+    padding-top:4px;
+    flex:0 0 auto;
+  }
+  .diary-prev-results{
+    display:flex;
+    flex-wrap:wrap;
+    gap:4px;
+  }
+  .diary-prev-empty{
+    font-family:var(--mono);
+    font-size:0.68rem;
+    color:#a89e88;
+  }
+  .diary-prev-chip{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:0.66rem;
+    padding:2px 6px;
+    border-radius:2px;
+    background:#ece6d4;
+    color:#4a473d;
+    white-space:nowrap;
+  }
+  .diary-prev-chip.win{ background:rgba(31,92,58,0.14); color:var(--pitch); }
+  .diary-prev-chip.loss{ background:rgba(193,68,45,0.12); color:var(--red-card); }
+  .diary-prev-chip.draw{ background:rgba(217,164,65,0.16); color:#a87a18; }
+  .diary-meta{
+    font-family:var(--mono);
+    font-size:0.7rem;
+    color:#a89e88;
+    margin-bottom:10px;
+  }
+
+  @media (max-width:600px){
+    .diary-matchup{ flex-direction:column; }
+    .diary-vs{ align-self:center; padding-top:0; }
+  }
 </style>
 </head>
 <body>
@@ -1570,6 +1676,7 @@
     <a href="#section-scatter">פיזור</a>
     <a href="#section-pace">קצב שערים</a>
     <a href="#section-knockout">ברקט נוקאאוט</a>
+    <a href="#section-diaries">פתחו יומנים</a>
     <a href="#section-decisive">שלבי הכרעה</a>
     <a href="#section-confederations">לפי יבשת</a>
     <a href="#section-summary">סיכום</a>
@@ -1597,6 +1704,8 @@ const HISTORICAL_DATA_URLS = {
 };
 
 const GROUP_ORDER = ["Group A","Group B","Group C","Group D","Group E","Group F","Group G","Group H","Group I","Group J","Group K","Group L"];
+
+const SHARE_BASE_URL = "https://gil1feldman.github.io/world_cup_2026/";
 
 const FIFA_RANKING = {
   "Argentina": 1, "Spain": 2, "France": 3, "England": 4, "Portugal": 5,
@@ -2853,6 +2962,41 @@ function downloadMatchIcs(matchInfo){
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
+function buildShareUrl(sectionId){
+  return `${SHARE_BASE_URL}#${sectionId}`;
+}
+
+async function shareSection(sectionId, btn){
+  const url = buildShareUrl(sectionId);
+  const shareData = {
+    title: "מונדיאל 2026 — פתחו יומנים",
+    text: "המשחקים הבאים בשלב הנוקאאוט שכבר נקבעו",
+    url
+  };
+  if(navigator.share){
+    try{
+      await navigator.share(shareData);
+      return;
+    } catch(err){
+      // המשתמש ביטל את השיתוף, או שאין תמיכה בפועל — נופלים להעתקת קישור
+    }
+  }
+  try{
+    await navigator.clipboard.writeText(url);
+    if(btn){
+      const original = btn.textContent;
+      btn.textContent = "✓ הקישור הועתק";
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.classList.remove('copied');
+      }, 2000);
+    }
+  } catch(err){
+    console.error("שגיאה בשיתוף:", err);
+  }
+}
+
 // ─── Upcoming Matches ─────────────────────────────────────────────────────────
 
 function renderUpcomingMatches(matches){
@@ -3651,6 +3795,7 @@ function render(matches, teamFilter){
   html += renderRecentMatches(filteredMatches);
   html += renderUpcomingMatches(filteredMatches);
   html += renderKnockoutBracket(allMatches, standings);
+  html += renderOpenDiaries(allMatches, standings);
   html += renderDecisionStages(filteredMatches);
   html += renderStandings(standingsToShow);
   if(teamFilter && scorers.length === 0){
@@ -3683,6 +3828,13 @@ function render(matches, teamFilter){
     btn.addEventListener('click', () => {
       const info = upcomingCalendarMatches[btn.getAttribute('data-ics-key')];
       if(info) downloadMatchIcs(info);
+    });
+  });
+
+  document.querySelectorAll('.section-share-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      shareSection(btn.getAttribute('data-share-section'), btn);
     });
   });
 
@@ -3906,6 +4058,123 @@ function renderKnockoutBracket(allMatches,standings){
 </div>`;
   return accordion('section-knockout',titleInner,body);
 }
+
+// ─── Open Diaries (פתחו יומנים) ────────────────────────────────────────────
+
+function teamPreviousResultsList(team, allMatchesData){
+  const played = allMatchesData.filter(m => m.score && (m.team1 === team || m.team2 === team));
+  const sorted = sortPlayedChronologically(played).reverse(); // החדש ביותר קודם
+  return sorted.map(m => {
+    const isHome = m.team1 === team;
+    const opponent = isHome ? m.team2 : m.team1;
+    const ownScore = isHome ? m.score.ft[0] : m.score.ft[1];
+    const oppScore = isHome ? m.score.ft[1] : m.score.ft[0];
+    const oc = getMatchOutcome(m);
+    let outcome;
+    if(oc.winnerSide === null){
+      outcome = "draw";
+    } else {
+      const winnerTeam = oc.winnerSide === 1 ? m.team1 : m.team2;
+      outcome = winnerTeam === team ? "win" : "loss";
+    }
+    const roundLabel = m.round.startsWith("Matchday")
+      ? (m.group ? m.group.replace('Group ','בית ') : m.round)
+      : (KO_ROUND_LABELS[m.round] || m.round);
+    return {opponent, ownScore, oppScore, outcome, roundLabel};
+  });
+}
+
+function renderDiaryPrevResults(team, allMatchesData){
+  const results = teamPreviousResultsList(team, allMatchesData);
+  if(results.length === 0){
+    return `<div class="diary-prev-empty">אין עדיין משחקים קודמים בטורניר</div>`;
+  }
+  return `<div class="diary-prev-results">` + results.map(r => {
+    const cls = r.outcome === "win" ? "win" : r.outcome === "loss" ? "loss" : "draw";
+    const label = r.outcome === "win" ? "נ" : r.outcome === "loss" ? "ה" : "ת";
+    return `<span class="diary-prev-chip ${cls}" title="${r.roundLabel}">${label} ${r.ownScore}:${r.oppScore} נגד ${r.opponent}</span>`;
+  }).join('') + `</div>`;
+}
+
+function renderOpenDiaries(allMatchesData, standings){
+  const matchMap = buildMatchMap(allMatchesData);
+  const koUpcoming = allMatchesData.filter(m => KO_ROUND_LABELS[m.round] && !m.score);
+
+  const resolved = koUpcoming
+    .map(m => {
+      const slot1 = resolveSlot(m.team1, matchMap, standings);
+      const slot2 = resolveSlot(m.team2, matchMap, standings);
+      return {m, slot1, slot2, _il: matchIsraelTime(m)};
+    })
+    .filter(x => x.slot1.resolved && x.slot2.resolved && !x.slot1.provisional && !x.slot2.provisional)
+    .sort((a,b) => {
+      if(a._il && b._il) return a._il.utc - b._il.utc;
+      if(a._il) return -1;
+      if(b._il) return 1;
+      return 0;
+    });
+
+  const titleInner = `<h2>פתחו יומנים</h2><div class="rule"></div>`
+    + `<button class="section-share-btn" data-share-section="section-diaries" title="שתף סקשן זה">🔗 שתף</button>`
+    + `<span class="count">${resolved.length} משחקים נקבעו</span>`;
+
+  if(resolved.length === 0){
+    return accordion("section-diaries", titleInner,
+      `<p class="analysis-empty">עדיין אין משחקי נוקאאוט עם שתי נבחרות סופיות שטרם שוחקו — הרשימה תתעדכן כשהמשחקים הקודמים בברקט יסתיימו</p>`);
+  }
+
+  const days = ["יום א'","יום ב'","יום ג'","יום ד'","יום ה'","יום ו'","שבת"];
+  const months = ["ינו","פבר","מרץ","אפר","מאי","יונ","יול","אוג","ספט","אוק","נוב","דצמ"];
+
+  let body = `<div class="diary-grid">`;
+  resolved.forEach(({m, slot1, slot2, _il}) => {
+    const roundLabel = KO_ROUND_LABELS[m.round] || m.round;
+    let whenLabel = m.date;
+    if(_il){
+      const [y, mo, d] = _il.dateStr.split("-").map(Number);
+      const dateObj = new Date(Date.UTC(y, mo - 1, d));
+      whenLabel = `${days[dateObj.getUTCDay()]} ${dateObj.getUTCDate()} ${months[dateObj.getUTCMonth()]} · ${_il.timeStr}`;
+    }
+    const rank1 = FIFA_RANKING[slot1.label];
+    const rank2 = FIFA_RANKING[slot2.label];
+    const rankBadge1 = rank1 ? `<span class="fifa-rank" title="דירוג פיפא (יוני 2026)">#${rank1}</span>` : "";
+    const rankBadge2 = rank2 ? `<span class="fifa-rank" title="דירוג פיפא (יוני 2026)">#${rank2}</span>` : "";
+
+    let calendarBtn = "";
+    if(_il){
+      const key = icsKey(slot1.label, slot2.label, _il.utc.toISOString());
+      upcomingCalendarMatches[key] = {
+        team1: slot1.label, team2: slot2.label,
+        ground: m.ground || '', round: roundLabel,
+        kickoffUtc: _il.utc.toISOString()
+      };
+      calendarBtn = `<button class="add-to-calendar" data-ics-key="${key}">📅 שמור ביומן</button>`;
+    }
+
+    body += `<div class="diary-card">
+      <div class="diary-header">
+        <span class="diary-when">${whenLabel}</span>
+        <span class="diary-round">${roundLabel}</span>
+      </div>
+      <div class="diary-matchup">
+        <div class="diary-team">
+          <div class="diary-team-name">${slot1.label} ${rankBadge1}</div>
+          ${renderDiaryPrevResults(slot1.label, allMatchesData)}
+        </div>
+        <div class="diary-vs">נגד</div>
+        <div class="diary-team">
+          <div class="diary-team-name">${rankBadge2} ${slot2.label}</div>
+          ${renderDiaryPrevResults(slot2.label, allMatchesData)}
+        </div>
+      </div>
+      <div class="diary-meta">${m.ground || ''}</div>
+      <div class="diary-actions">${calendarBtn}</div>
+    </div>`;
+  });
+  body += `</div>`;
+  return accordion("section-diaries", titleInner, body);
+}
+
 
 // ─── שלבי הכרעה (90' / הארכה / פנדלים) ────────────────────────────────────────
 
