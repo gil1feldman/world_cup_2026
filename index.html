@@ -2164,11 +2164,19 @@ function buildMinuteBins(matches){
     {label:"\u200E86\u200E\u2013\u200E90", min:86, max:90, count:0, half:2},
     {label:"90+", min:null, max:null, count:0, half:2, extraHalf:2},
   ];
+  // שערי הארכה (מעבר לדקה 90, גם עם תוספת זמן משלה) נספרים בנפרד ולא
+  // נכללים ב-12 העמודות של הגרף, שמתארות רק את זמן המשחק הרגיל (כולל
+  // תוספות הזמן שלו — 45+/90+).
+  let extraTimeGoals = 0;
   matches.forEach(m => {
     [m.goals1, m.goals2].forEach(goals => {
       (goals || []).forEach(g => {
         const p = parseMinute(g.minute);
         if(!p) return;
+        if(p.base > 90){
+          extraTimeGoals++;
+          return;
+        }
         if(p.isExtra){
           const target = p.base <= 45 ? "45+" : "90+";
           bins.find(b => b.label === target).count++;
@@ -2179,6 +2187,7 @@ function buildMinuteBins(matches){
       });
     });
   });
+  bins.extraTimeGoals = extraTimeGoals;
   return bins;
 }
 
@@ -2212,12 +2221,13 @@ function renderMinuteAnalysis(matches){
   const busiest = bins.reduce((a,b) => b.count > a.count ? b : a, bins[0]);
   const firstHalfGoals = bins.filter(b => b.half === 1).reduce((s,b) => s + b.count, 0);
   const secondHalfGoals = bins.filter(b => b.half === 2).reduce((s,b) => s + b.count, 0);
-  const extraTimeGoals = bins.filter(b => b.extraHalf).reduce((s,b) => s + b.count, 0);
+  const stoppageTimeGoals = bins.filter(b => b.extraHalf).reduce((s,b) => s + b.count, 0);
+  const trueExtraTimeGoals = bins.extraTimeGoals || 0; // שערי הארכה (מעבר ל-90 דקות) — לא נכללים בגרף הזה
   const secondHalfPct = totalGoals ? Math.round((secondHalfGoals/totalGoals)*100) : 0;
 
   const body = `<div class="minute-chart">
     <div class="minute-chart-header">
-      <span>פיזור השערים על פני 90 הדקות</span>
+      <span>פיזור השערים על פני 90 הדקות${trueExtraTimeGoals > 0 ? ' (לא כולל הארכה)' : ''}</span>
       <span>${firstHalfGoals} במחצית 1 · ${secondHalfGoals} במחצית 2</span>
     </div>
     <div class="minute-bars">${bars}</div>
@@ -2230,7 +2240,8 @@ function renderMinuteAnalysis(matches){
     <div class="minute-takeaway">
       הפרק העמוס ביותר הוא <b>${busiest.label}'</b> עם <b>${busiest.count}</b> שערים.
       ${secondHalfPct}% מהשערים הובקעו במחצית השנייה.
-      ${extraTimeGoals > 0 ? `${extraTimeGoals} שערים הובקעו בתוספת הזמן (דקות 45+/90+).` : ''}
+      ${stoppageTimeGoals > 0 ? `${stoppageTimeGoals} שערים הובקעו בתוספת הזמן (דקות 45+/90+).` : ''}
+      ${trueExtraTimeGoals > 0 ? `<br>בנוסף, <b>${trueExtraTimeGoals}</b> ${trueExtraTimeGoals === 1 ? 'שער הובקע' : 'שערים הובקעו'} בהארכה (מעבר ל-90 דקות) — לא נכללים בגרף ובספירה שלמעלה.` : ''}
     </div>
   </div>`;
   return accordion("section-minutes", titleInner, body);
@@ -2610,15 +2621,16 @@ function renderComebackTracker(matches){
 // ─── Scatter Charts ───────────────────────────────────────────────────────────
 
 function splitGoalsByHalf(m){
-  let firstHalf = 0, secondHalf = 0;
+  let firstHalf = 0, secondHalf = 0, extraTime = 0;
   [m.goals1, m.goals2].forEach(goals => {
     (goals || []).forEach(g => {
       const p = parseMinute(g.minute);
       if(!p) return;
+      if(p.base > 90){ extraTime++; return; } // הארכה — לא נכללת בספירת המחציות
       if(p.base <= 45) firstHalf++; else secondHalf++;
     });
   });
-  return {firstHalf, secondHalf};
+  return {firstHalf, secondHalf, extraTime};
 }
 
 function attrEscape(str){
@@ -2695,11 +2707,14 @@ function renderScatterSvg({points, xMax, yMax, yMin = 0, xLabel, yLabel, diagona
 function renderHalfGoalsScatter(matches){
   const played = matches.filter(m => m.score);
   if(played.length === 0) return `<div class="analysis-card"><h3>שערים: מחצית 1 מול מחצית 2</h3><p class="analysis-empty">אין עדיין משחקים שהתקיימו</p></div>`;
+  let totalExtraTime = 0;
   const points = played.map(m => {
-    const {firstHalf, secondHalf} = splitGoalsByHalf(m);
+    const {firstHalf, secondHalf, extraTime} = splitGoalsByHalf(m);
+    totalExtraTime += extraTime;
     const [hs, as] = m.score.ft;
     const roundLabel = m.round.startsWith("Matchday") ? (m.group ? m.group.replace('Group ','בית ') : m.round) : m.round;
-    return { x: firstHalf, y: secondHalf, tooltip: `<b>${svgEscape(m.team1)} ${hs}:${as} ${svgEscape(m.team2)}</b><br>${roundLabel}<br>מחצית 1: ${firstHalf} שערים · מחצית 2: ${secondHalf} שערים` };
+    const etNote = extraTime > 0 ? `<br><span style="color:#a87a18">+${extraTime} ${extraTime===1?'שער':'שערים'} בהארכה (לא נכלל בציר)</span>` : '';
+    return { x: firstHalf, y: secondHalf, tooltip: `<b>${svgEscape(m.team1)} ${hs}:${as} ${svgEscape(m.team2)}</b><br>${roundLabel}<br>מחצית 1: ${firstHalf} שערים · מחצית 2: ${secondHalf} שערים${etNote}` };
   });
   const xMax = Math.max(2, ...points.map(p => p.x));
   const yMax = Math.max(2, ...points.map(p => p.y));
@@ -2712,6 +2727,9 @@ function renderHalfGoalsScatter(matches){
   if(above > below) takeaway = `ב-<b>${above}</b> מתוך ${points.length} משחקים נכבשו יותר שערים במחצית השנייה מאשר בראשונה (סה״כ ${totalSecond} מול ${totalFirst}) — נקודות מעל הקו המקווקו.`;
   else if(below > above) takeaway = `ב-<b>${below}</b> מתוך ${points.length} משחקים נכבשו יותר שערים במחצית הראשונה מאשר בשנייה (סה״כ ${totalFirst} מול ${totalSecond}) — נקודות מתחת לקו המקווקו.`;
   else takeaway = `${onLine} מתוך ${points.length} משחקים הסתיימו עם פיזור שערים שווה בין המחציות (סה״כ ${totalFirst} במחצית 1, ${totalSecond} במחצית 2).`;
+  if(totalExtraTime > 0){
+    takeaway += ` הספירה כוללת זמן משחק רגיל בלבד (כולל תוספת זמן); <b>${totalExtraTime}</b> ${totalExtraTime===1?'שער שנכבש':'שערים שנכבשו'} בהארכה אינם נכללים בגרף זה.`;
+  }
   return `<div class="analysis-card">
     <h3>שערים: מחצית 1 מול מחצית 2</h3>
     ${renderScatterSvg({points, xMax, yMax, xLabel:"שערים במחצית 1", yLabel:"שערים במחצית 2", diagonal:true})}
@@ -3529,6 +3547,9 @@ function buildMinutesSheetData(matches){
     const halfLabel = b.extraHalf ? `תוספת זמן (מחצית ${b.extraHalf})` : `מחצית ${b.half}`;
     rows.push([b.label.replace(/\u200E/g, ''), halfLabel, b.count]);
   });
+  if(bins.extraTimeGoals){
+    rows.push(["הארכה (מעבר ל-90 דקות)", "הארכה", bins.extraTimeGoals]);
+  }
   return rows;
 }
 
@@ -4543,12 +4564,15 @@ function buildSummaryText(matches, standings, scorers){
   const upsets = findUpsets(matches);
 
   // נבחרות שעדיין משחקות = לא הפסידו במשחק נוקאאוט
+  // משתמשים ב-getMatchOutcome (פנדלים > הארכה > זמן רגיל) ולא רק ב-ft,
+  // אחרת מפסידות במשחקים שהוכרעו בהארכה/פנדלים (שם ft הוא תיקו) "נעלמות"
+  // מרשימת המודחות ומספר הנבחרות הפעילות מתנפח.
   const KO_ROUNDS = new Set(['Round of 32','Round of 16','Quarter-final','Semi-final','Final','Match for third place']);
   const eliminatedTeams = new Set();
   matches.filter(m => m.score && KO_ROUNDS.has(m.round)).forEach(m => {
-    const [h,a] = m.score.ft;
-    if(h !== a){
-      eliminatedTeams.add(h < a ? m.team1 : m.team2);
+    const oc = getMatchOutcome(m);
+    if(oc && oc.winnerSide !== null){
+      eliminatedTeams.add(oc.winnerSide === 1 ? m.team2 : m.team1);
     }
   });
   // סנן רק שמות אמיתיים של נבחרות (לא slots כמו "W74", "1A", "3A/B/C")
@@ -4565,11 +4589,14 @@ function buildSummaryText(matches, standings, scorers){
   const now = new Date();
   const daysToFinal = Math.ceil((finalDate - now) / (1000 * 60 * 60 * 24));
 
-  // שערים לפי מחציות
+  // שערים לפי מחציות (תוספת זמן 45+/90+ נכללת במחצית שבה נכבשה;
+  // שערי הארכה אמיתית — מעבר לדקה 90 — נספרים בנפרד ולא נכללים כאן)
   const bins = buildMinuteBins(matches);
-  const firstHalfGoals  = bins.filter(b => b.half === 1 && !b.extraHalf).reduce((s,b)=>s+b.count,0);
-  const secondHalfGoals = bins.filter(b => b.half === 2 && !b.extraHalf).reduce((s,b)=>s+b.count,0);
-  const extra2Goals = bins.find(b => b.label === "90+")?.count || 0;
+  const firstHalfGoals  = bins.filter(b => b.half === 1).reduce((s,b)=>s+b.count,0);
+  const secondHalfGoals = bins.filter(b => b.half === 2).reduce((s,b)=>s+b.count,0);
+  const stoppageFirstGoals  = bins.find(b => b.label === "45+")?.count || 0;
+  const stoppageSecondGoals = bins.find(b => b.label === "90+")?.count || 0;
+  const extraTimeGoalsCount = bins.extraTimeGoals || 0;
 
   // תאריך עדכון
   const months = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
@@ -4597,11 +4624,14 @@ function buildSummaryText(matches, standings, scorers){
   if(totalGoals > 0){
     const firstPct  = Math.round((firstHalfGoals  / totalGoals) * 100);
     const secondPct = Math.round((secondHalfGoals / totalGoals) * 100);
-    p2  = `פיזור השערים: <b>${firstHalfGoals}</b> שערים במחצית הראשונה (${firstPct}%) `;
-    p2 += `ו-<b>${secondHalfGoals}</b> במחצית השנייה (${secondPct}%). `;
-    p2 += extra2Goals > 0
-      ? `<b>${extra2Goals}</b> ${extra2Goals === 1 ? "שער הובקע" : "שערים הובקעו"} בתוספת הזמן של המחצית השנייה ${ltr("(90+)")}.`
-      : `עד כה לא הובקעו שערים בתוספת הזמן של המחצית השנייה ${ltr("(90+)")}.`;
+    p2  = `פיזור השערים (זמן משחק רגיל, כולל תוספת זמן): <b>${firstHalfGoals}</b> שערים במחצית הראשונה (${firstPct}%) `;
+    p2 += `ו-<b>${secondHalfGoals}</b> במחצית השנייה (${secondPct}%)`;
+    p2 += (stoppageFirstGoals > 0 || stoppageSecondGoals > 0)
+      ? ` — מתוכם ${stoppageFirstGoals} בתוספת הזמן של המחצית הראשונה ${ltr("(45+)")} ו-${stoppageSecondGoals} בתוספת הזמן של המחצית השנייה ${ltr("(90+)")}. `
+      : `. `;
+    p2 += extraTimeGoalsCount > 0
+      ? `בנוסף, <b>${extraTimeGoalsCount}</b> ${extraTimeGoalsCount === 1 ? "שער הובקע" : "שערים הובקעו"} בהארכה (מעבר ל-90 דקות) — לא נכללים במניין זה.`
+      : `עד כה לא הובקעו שערים בהארכה.`;
   }
 
   // ─── פסקה 3: מבקיע מוביל ────────────────────────────────────────────────
