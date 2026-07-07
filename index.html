@@ -1391,6 +1391,104 @@
     overflow-x:auto;
   }
 
+  /* ---------- ACTIVE TEAMS ---------- */
+  .active-teams-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+    gap:14px;
+  }
+  .active-team-card{
+    border:2px solid var(--ink);
+    background:#fffdf7;
+    padding:14px 16px 16px;
+    position:relative;
+  }
+  .active-team-card.active-rank-1{ border-color:var(--gold); }
+  .active-team-card.active-rank-1 .atc-medal,
+  .active-team-card.active-rank-2 .atc-medal,
+  .active-team-card.active-rank-3 .atc-medal{
+    font-size:1rem;
+    line-height:1;
+  }
+  .atc-header{
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+    margin-bottom:12px;
+  }
+  .atc-rank{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:1.1rem;
+    color:#a89e88;
+    min-width:18px;
+  }
+  .active-team-card.active-rank-1 .atc-rank{ color:var(--gold); }
+  .active-team-card.active-rank-2 .atc-rank{ color:#9a9282; }
+  .active-team-card.active-rank-3 .atc-rank{ color:#a87a4a; }
+  .atc-name{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:1.1rem;
+    color:var(--ink);
+    flex:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .atc-stats{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+  }
+  .atc-row{
+    display:grid;
+    grid-template-columns:46px 1fr 36px;
+    align-items:center;
+    gap:8px;
+  }
+  .atc-label{
+    font-family:var(--mono);
+    font-size:0.66rem;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:#8a8270;
+  }
+  .atc-track{
+    height:8px;
+    background:#ece6d4;
+    border-radius:2px;
+    overflow:hidden;
+  }
+  .atc-fill{
+    display:block;
+    height:100%;
+    border-radius:2px;
+    transition:width 0.4s ease;
+  }
+  .atc-fill.pts{ background:var(--pitch); }
+  .atc-fill.gf{ background:var(--gold); }
+  .atc-fill.ga{ background:var(--red-card); }
+  .atc-fill.gd-pos{ background:var(--pitch); }
+  .atc-fill.gd-neg{ background:var(--red-card); }
+  .atc-fill.gd-zero{ background:#c8c0aa; }
+  .atc-fill.fifa{ background:#a87a18; }
+  .atc-fill.km{ background:var(--red-card); opacity:0.7; }
+  .atc-val{
+    font-family:var(--mono);
+    font-size:0.76rem;
+    font-weight:700;
+    color:var(--ink);
+    text-align:left;
+  }
+  @media (max-width:420px){
+    .atc-row{ grid-template-columns:40px 1fr 32px; gap:6px; }
+    .atc-label{ font-size:0.6rem; }
+    .atc-val{ font-size:0.7rem; }
+    .active-teams-grid{ grid-template-columns:1fr; }
+  }
+
   /* ---------- TRAVEL DISTANCE TRACKER ---------- */
   .travel-map-wrap{
     border:2px solid var(--ink);
@@ -1665,6 +1763,7 @@
     <button class="export-btn" id="exportExcelBtn" title="ייצוא כל הנתונים לאקסל" disabled>📊 ייצוא לאקסל</button>
     <a href="#section-recent">משחקים אחרונים</a>
     <a href="#section-upcoming">משחקים הבאים</a>
+    <a href="#section-active-teams">נבחרות פעילות</a>
     <a href="#section-standings">מיקומי בתים</a>
     <a href="#section-scorers">מבקיעים</a>
     <a href="#section-minutes">שערים לפי דקה</a>
@@ -3097,6 +3196,160 @@ function renderTopStats(matches, scorers, teamFilter){
   </div>`;
 }
 
+// ─── Active Teams ────────────────────────────────────────────────────────────
+
+function isRealTeamName(t){
+  return t && !/^[0-9WL]/.test(t) && !t.includes('#') && !t.includes('/') && t.length > 2;
+}
+
+// נבחרת "פעילה" = יש לה לפחות משחק אחד עתידי בלוח (טרם שוחק) — לא משנה אם
+// זה שלב בתים או נוקאאוט. ברגע שכל המשחקים העתידיים של נבחרת מתעדכנים
+// כמשוחקים, היא יוצאת מהרשימה גם אם עדיין לא הודחה רשמית.
+//
+// במשחקי נוקאאוט עתידיים, team1/team2 בנתונים הגולמיים הם לרוב "סלוט"
+// (למשל "W91" = מנצחת משחק 91) ולא שם נבחרת מפורש — גם אם הנבחרת עצמה
+// כבר ידועה (למשל ניצחה במשחק קודם), ורק היריבה טרם נקבעה. משתמשים באותה
+// לוגיקת resolveSlot שמפעילה את הברקט/היומנים כדי לפענח כל צד בנפרד,
+// כך שנבחרת עם יריבה שעוד לא נקבעה עדיין תיחשב "פעילה".
+function computeActiveTeams(matches){
+  const standings = buildStandings(matches);
+  const matchMap = buildMatchMap(matches);
+  const activeTeams = new Set();
+  matches.forEach(m => {
+    if(m.score) return; // כבר שוחק — לא רלוונטי לקביעת "משחק עתידי"
+    [m.team1, m.team2].forEach(slot => {
+      if(!slot) return;
+      const resolved = resolveSlot(slot, matchMap, standings);
+      if(resolved.resolved && isRealTeamName(resolved.label)){
+        activeTeams.add(resolved.label);
+      }
+    });
+  });
+  return [...activeTeams];
+}
+
+// נק' ושערים מחושבים לפי תוצאת 90 הדקות (ft) בלבד — ניצחון=3, תיקו=1 —
+// גם עבור משחקי נוקאאוט שהוכרעו בפועל בהארכה/פנדלים (שם ה-ft הוא תיקו).
+function computeTeamStatsFt(team, matches){
+  const played = matches.filter(m => m.score && (m.team1 === team || m.team2 === team));
+  let win=0, draw=0, loss=0, gf=0, ga=0;
+  played.forEach(m => {
+    const isHome = m.team1 === team;
+    const [hs, as] = m.score.ft;
+    const own = isHome ? hs : as;
+    const opp = isHome ? as : hs;
+    gf += own; ga += opp;
+    if(own > opp) win++; else if(own < opp) loss++; else draw++;
+  });
+  return {team, played: played.length, win, draw, loss, gf, ga, gd: gf-ga, pts: win*3+draw};
+}
+
+function computeTeamTravelKm(team, matches){
+  const played = sortPlayedChronologically(matches).filter(m => m.team1 === team || m.team2 === team);
+  const grounds = played.map(m => m.ground).filter(g => CITY_COORDS[g]);
+  if(grounds.length < 2) return 0;
+  let dist = 0;
+  for(let i = 1; i < grounds.length; i++){
+    dist += haversineKm(CITY_COORDS[grounds[i-1]], CITY_COORDS[grounds[i]]);
+  }
+  return Math.round(dist);
+}
+
+function buildActiveTeamsRows(matches){
+  const activeTeams = computeActiveTeams(matches);
+  const rows = activeTeams.map(team => {
+    const stats = computeTeamStatsFt(team, matches);
+    const km = computeTeamTravelKm(team, matches);
+    return {...stats, km, fifaRank: FIFA_RANKING[team] || null};
+  });
+  rows.sort((a,b) => (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf));
+  return rows;
+}
+
+function atcBarRow(label, value, pct, fillCls, valLabel){
+  return `<div class="atc-row">
+    <span class="atc-label">${label}</span>
+    <span class="atc-track"><span class="atc-fill ${fillCls}" style="width:${pct}%"></span></span>
+    <span class="atc-val">${valLabel != null ? valLabel : value}</span>
+  </div>`;
+}
+
+function renderActiveTeamsCards(rows){
+  const maxPts = Math.max(...rows.map(r => r.pts), 1);
+  const maxGf  = Math.max(...rows.map(r => r.gf), 1);
+  const maxGa  = Math.max(...rows.map(r => r.ga), 1);
+  const maxGd  = Math.max(...rows.map(r => Math.abs(r.gd)), 1);
+  const maxKm  = Math.max(...rows.map(r => r.km), 1);
+  const knownRanks = rows.map(r => r.fifaRank).filter(r => r != null);
+  const minRank = knownRanks.length ? Math.min(...knownRanks) : 1;
+  const maxRank = knownRanks.length ? Math.max(...knownRanks) : 1;
+  const rankSpan = Math.max(1, maxRank - minRank);
+
+  const medals = ['🥇','🥈','🥉'];
+
+  let html = `<div class="active-teams-grid">`;
+  rows.forEach((r, i) => {
+    const rankCls = i === 0 ? ' active-rank-1' : i === 1 ? ' active-rank-2' : i === 2 ? ' active-rank-3' : '';
+    const medal = i < 3 ? `<span class="atc-medal">${medals[i]}</span>` : '';
+
+    // בר הפיפ״א הפוך: נבחרת מדורגת גבוה (מספר נמוך) מקבלת בר מלא, כדי
+    // שיהיה ברור מיד מי המדורגת נמוך ("אנדרדוג") שהגיעה רחוק בטורניר.
+    // הסקאלה יחסית רק בין הנבחרות הפעילות כרגע — לא מול כלל דירוג העולם.
+    let fifaPct, fifaValLabel;
+    if(r.fifaRank != null){
+      fifaPct = Math.max(4, 100 - ((r.fifaRank - minRank) / rankSpan) * 100);
+      fifaValLabel = `#${r.fifaRank}`;
+    } else {
+      fifaPct = 4;
+      fifaValLabel = '—';
+    }
+
+    const ptsPct = Math.max(4, (r.pts / maxPts) * 100);
+    const gfPct  = Math.max(4, (r.gf / maxGf) * 100);
+    const gaPct  = Math.max(4, (r.ga / maxGa) * 100);
+    const gdPct  = Math.max(4, (Math.abs(r.gd) / maxGd) * 100);
+    const gdCls  = r.gd > 0 ? 'gd-pos' : r.gd < 0 ? 'gd-neg' : 'gd-zero';
+    const gdLabel = r.gd > 0 ? `+${r.gd}` : `${r.gd}`;
+    const kmPct  = Math.max(4, (r.km / maxKm) * 100);
+
+    html += `<div class="active-team-card${rankCls}">
+      <div class="atc-header">
+        <span class="atc-rank">${i+1}</span>
+        ${medal}
+        <span class="atc-name">${r.team}</span>
+      </div>
+      <div class="atc-stats">
+        ${atcBarRow('פיפ״א', r.fifaRank, fifaPct, 'fifa', fifaValLabel)}
+        ${atcBarRow("נק'", r.pts, ptsPct, 'pts')}
+        ${atcBarRow('כבשה', r.gf, gfPct, 'gf')}
+        ${atcBarRow('ספגה', r.ga, gaPct, 'ga')}
+        ${atcBarRow('הפרש', r.gd, gdPct, gdCls, gdLabel)}
+        ${atcBarRow('ק״מ', r.km, kmPct, 'km', r.km.toLocaleString('he-IL'))}
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderActiveTeamsSection(matches){
+  const rows = buildActiveTeamsRows(matches);
+  const titleInner = `<h2>נבחרות פעילות <span style="font-family:var(--mono);font-size:0.65em;color:#8a8270;text-transform:none;letter-spacing:0">(עם משחק עתידי בלוח)</span></h2><div class="rule"></div><span class="count">${rows.length} נבחרות</span>`;
+
+  if(rows.length === 0){
+    return accordion("section-active-teams", titleInner,
+      `<p class="analysis-empty">אין כרגע נבחרות עם משחק עתידי בלוח — ייתכן שהטורניר הסתיים או שלוח המשחקים טרם עודכן</p>`);
+  }
+
+  const body = `${renderActiveTeamsCards(rows)}
+    <div style="font-family:var(--mono);font-size:0.72rem;color:#8a8270;margin-top:14px">
+      "פעילה" = נבחרת עם לפחות משחק אחד עתידי בלוח (טרם שוחק). נק' ושערים מחושבים לפי תוצאת 90 הדקות בלבד (ניצחון = 3 נק׳, תיקו = 1 נק׳) —
+      גם עבור משחקי נוקאאוט שהוכרעו בהארכה או בפנדלים. מרחק הנסיעה מחושב כקו אווירי מצטבר בין ערי המשחקים, לפי סדר כרונולוגי.
+      בר הפיפ״א הפוך ויחסי בין הנבחרות הפעילות בלבד — בר מלא = המדורגת הכי גבוה מהנותרות, בר קצר = המדורגת הכי נמוך (אנדרדוג בולט).
+    </div>`;
+  return accordion("section-active-teams", titleInner, body);
+}
+
 // ─── Confederations ───────────────────────────────────────────────────────────
 
 const CONFEDERATION_MAP = {
@@ -3532,6 +3785,17 @@ function buildStandingsSheetData(standings){
   return rows;
 }
 
+// נבחרות פעילות
+function buildActiveTeamsSheetData(matches){
+  const rows = buildActiveTeamsRows(matches);
+  if(rows.length === 0 || !matches.some(m => m.score)) return [["אין נתונים"]];
+  const data = [["#", "קבוצה", "דירוג פיפא", "משחקים", "ניצחונות", "תיקו", "הפסדים", "כבשה", "ספגה", "הפרש", "נקודות", "ק״מ שנסעו"]];
+  rows.forEach((r, i) => {
+    data.push([i+1, r.team, r.fifaRank || "", r.played, r.win, r.draw, r.loss, r.gf, r.ga, r.gd, r.pts, r.km]);
+  });
+  return data;
+}
+
 // מבקיעים
 function buildScorersSheetData(scorers){
   const rows = [["שחקן", "נבחרת", "שערים"]];
@@ -3744,6 +4008,7 @@ function exportToExcel(allMatchesData, teamFilter){
     addSheet(wb, "משחקים אחרונים", buildRecentSheetData(filteredMatches));
     addSheet(wb, "משחקים הבאים", buildUpcomingSheetData(filteredMatches));
     addSheet(wb, "מיקומי בתים", buildStandingsSheetData(standingsToShow));
+    addSheet(wb, "נבחרות פעילות", buildActiveTeamsSheetData(allMatchesData));
     addSheet(wb, "מבקיעים", buildScorersSheetData(scorers));
     addSheet(wb, "שערים לפי דקה", buildMinutesSheetData(filteredMatches));
     addSheet(wb, "ניתוח תוצאות", buildResultsSheetData(filteredMatches));
@@ -3845,6 +4110,7 @@ function render(matches, teamFilter){
   html += renderTopStats(filteredMatches, scorers, teamFilter);
   html += renderRecentMatches(filteredMatches);
   html += renderUpcomingMatches(filteredMatches);
+  html += renderActiveTeamsSection(matches);
   html += renderKnockoutBracket(allMatches, standings);
   html += renderOpenDiaries(allMatches, standings);
   html += renderDecisionStages(filteredMatches);
