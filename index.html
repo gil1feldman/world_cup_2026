@@ -4086,6 +4086,21 @@ function getTeamList(matches){
 
 function render(matches, teamFilter){
   const standings = buildStandings(matches);
+
+  // משחקי נוקאאוט עתידיים מגיעים מהמקור הגולמי עם team1/team2 כסלוט
+  // (למשל "W95" = מנצחת משחק 95) גם כשהנבחרת בפועל כבר ידועה. הברקט
+  // ו"פתחו יומנים" כבר מפענחים את זה דרך resolveSlot — כאן עושים את
+  // אותו הדבר כדי שגם "המשחקים הבאים" ו"לוח משחקים" יציגו שם נבחרת
+  // אמיתי במקום את קוד הסלוט הגולמי.
+  const matchMapForDisplay = buildMatchMap(matches);
+  const resolveTeamNames = (list) => list.map(m => {
+    if(m.score) return m; // משחקים שהתקיימו כבר כוללים שמות אמיתיים
+    const r1 = resolveSlot(m.team1, matchMapForDisplay, standings);
+    const r2 = resolveSlot(m.team2, matchMapForDisplay, standings);
+    if(r1.label === m.team1 && r2.label === m.team2) return m;
+    return {...m, team1: r1.label, team2: r2.label};
+  });
+
   const filteredMatches = teamFilter
     ? matches.filter(m => m.team1 === teamFilter || m.team2 === teamFilter)
     : matches;
@@ -4109,7 +4124,7 @@ function render(matches, teamFilter){
 
   html += renderTopStats(filteredMatches, scorers, teamFilter);
   html += renderRecentMatches(filteredMatches);
-  html += renderUpcomingMatches(filteredMatches);
+  html += renderUpcomingMatches(resolveTeamNames(filteredMatches));
   html += renderActiveTeamsSection(matches);
   html += renderKnockoutBracket(allMatches, standings);
   html += renderOpenDiaries(allMatches, standings);
@@ -4127,7 +4142,7 @@ function render(matches, teamFilter){
   html += renderUpsets(filteredMatches);
   html += renderComebackTracker(filteredMatches);
   html += renderTravelSection(matches);
-  html += renderMatches(filteredMatches);
+  html += renderMatches(resolveTeamNames(filteredMatches));
   html += renderScatterCharts(filteredMatches);
   html += renderPaceComparison(matches, historicalData);
   html += renderConfederations(matches);
